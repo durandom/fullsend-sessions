@@ -1,5 +1,5 @@
 ---
-name: sessions
+name: fs-sessions
 description: |
   Manage shared Claude Code session transcripts — status, push, pull, view in AgentsView.
   Use when asked to share, export, push, or pull Claude Code sessions,
@@ -7,7 +7,7 @@ description: |
   or start AgentsView for sessions.
 ---
 
-# /sessions
+# /fs-sessions
 
 Share and browse team Claude Code session transcripts via a shared git repo.
 
@@ -29,7 +29,7 @@ If no subcommand is given, show status.
 
 ## Routing
 
-Parse the first word after `/sessions` as the subcommand.
+Parse the first word after `/fs-sessions` as the subcommand.
 
 | Command | Reference |
 |---------|-----------|

@@ -34,4 +34,4 @@ Check and report each item:
    git log --oneline -1 '@{upstream}' 2>/dev/null
    ```
 
-If not configured, suggest running `/sessions setup`.
+If not configured, suggest running `/fs-sessions setup`.
