@@ -10,7 +10,13 @@ First-time setup for session sharing.
 git clone git@github.com:durandom/fullsend-sessions.git ~/src/rhdh/fullsend-sessions
 ```
 
-### 2. Create the config file
+### 2. Install the skill
+
+```bash
+npx skills add durandom/fullsend-sessions --skill fs-sessions
+```
+
+### 3. Create the config file
 
 ```bash
 mkdir -p ~/.config/fullsend
@@ -18,7 +24,7 @@ echo 'FULLSEND_SESSIONS_REPO=/Users/$(whoami)/src/rhdh/fullsend-sessions' > ~/.c
 chmod 600 ~/.config/fullsend/sessions.env
 ```
 
-### 3. Enable the SessionEnd hook in consuming repos
+### 4. Enable the SessionEnd hook in consuming repos
 
 Each project where you want sessions exported needs a `.claude/settings.json` with the hook. Copy the one from this repo:
 
@@ -50,7 +56,7 @@ Or add manually — the hook command sources `sessions.env` to find the export s
 
 The hook exits silently if sessions aren't configured — safe to commit to shared repos.
 
-### 4. Verify
+### 5. Verify
 
 End a Claude Code session in a consuming repo and check:
 
