@@ -1,0 +1,95 @@
+# fullsend-sessions
+
+Share and browse Claude Code session transcripts across your team.
+
+Sessions are auto-exported when a Claude Code session ends, committed to this shared git repo, and pushed to the remote. [AgentsView](https://github.com/kenn-io/agentsview) serves them for browsing, searching, and analysis.
+
+## Quick start
+
+```bash
+# 1. Clone
+git clone git@github.com:durandom/fullsend-sessions.git ~/src/rhdh/fullsend-sessions
+
+# 2. Install the skill
+npx skills add durandom/fullsend-sessions --skill fs-sessions
+
+# 3. Run setup (in any Claude Code session)
+/fs-sessions setup
+```
+
+Setup creates `~/.config/fullsend/sessions.env` and installs a `SessionEnd` hook into your global `~/.claude/settings.json`. After that, every session is auto-exported and pushed — no manual steps needed.
+
+## How it works
+
+```
+Session ends → SessionEnd hook fires → export-session.sh
+  → copies transcript to sessions/<user>_<project>/<session-id>.jsonl
+  → git commit
+  → git pull --rebase && git push (best-effort, silent on failure)
+```
+
+Sessions are stored as JSONL files matching the AgentsView Claude discovery layout. Each file gets a metadata header line with project name, user, and timestamp.
+
+## CLI
+
+Share sessions interactively without the hook:
+
+```bash
+./scripts/fs-sessions.sh              # pick from recent sessions
+./scripts/fs-sessions.sh --last       # share the most recent session
+./scripts/fs-sessions.sh --list       # list recent sessions
+```
+
+## AgentsView
+
+Browse shared sessions in a web UI:
+
+```bash
+just sessions                         # start AgentsView with shared sessions
+just down                             # stop AgentsView
+```
+
+For LAN access: `AGENTSVIEW_HOST=$(hostname).local just sessions`
+
+## Fullsend runs
+
+Fetch and browse [fullsend](https://github.com/redhat-developer/rhdh-agentic) agent runs from GitHub Actions:
+
+```bash
+just fetch                            # download runs from default repos
+just up                               # fetch + start AgentsView
+just local                            # import local fullsend runs (auto-discovers from $TMPDIR)
+just local /path/to/output            # import from explicit path
+```
+
+## Skill commands
+
+Once installed, use `/fs-sessions` in any Claude Code session:
+
+| Command | Description |
+|---------|-------------|
+| `/fs-sessions setup` | Automated first-time setup |
+| `/fs-sessions status` | Config check, session count, hook state |
+| `/fs-sessions push` | Push local commits to remote |
+| `/fs-sessions pull` | Pull team sessions from remote |
+| `/fs-sessions view` | Start AgentsView |
+
+## Directory layout
+
+```
+sessions/                             # shared session transcripts
+  <user>_<project>/
+    <session-id>.jsonl
+scripts/
+  export-session.sh                   # SessionEnd hook script
+  fs-sessions.sh                      # interactive CLI
+  fetch-fullsend-runs.sh              # download fullsend runs from GH Actions
+  import-local-run.sh                 # import local fullsend runs
+skills/fs-sessions/                   # agent skill (npx skills)
+```
+
+## Prerequisites
+
+- `jq`, `git`
+- `podman` or `docker` (for AgentsView)
+- `gh` (for fetching fullsend runs)
