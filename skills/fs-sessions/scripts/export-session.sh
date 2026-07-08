@@ -4,11 +4,11 @@
 # Called by the SessionEnd hook — receives session metadata as JSON on stdin.
 #
 # Usage (hook):
-#   bash /path/to/fullsend-sessions/scripts/export-session.sh
+#   bash /path/to/fullsend-sessions/skills/fs-sessions/scripts/export-session.sh
 #
 # Usage (manual test):
 #   echo '{"transcript_path":"/path/to.jsonl","session_id":"abc-123","cwd":"/Users/me/myproject"}' \
-#     | bash scripts/export-session.sh
+#     | bash skills/fs-sessions/scripts/export-session.sh
 #
 # Prerequisites: jq, git
 #

@@ -15,12 +15,12 @@ If missing, tell the user to install them and stop.
 
 ### 2. Locate the sessions repo
 
-Check if running inside the fullsend-sessions repo (look for `scripts/export-session.sh`):
+Check if running inside the fullsend-sessions repo (look for `skills/fs-sessions/scripts/export-session.sh`):
 
 ```bash
 # Try cwd first, then common locations
 for candidate in "." "$HOME/src/rhdh/fullsend-sessions" "$HOME/fullsend-sessions"; do
-  if [ -f "$candidate/scripts/export-session.sh" ]; then
+  if [ -f "$candidate/skills/fs-sessions/scripts/export-session.sh" ]; then
     echo "Found: $(cd "$candidate" && pwd)"
     break
   fi
@@ -65,7 +65,7 @@ The hook entry to merge:
         "hooks": [
           {
             "type": "command",
-            "command": "bash -c '. ~/.config/fullsend/sessions.env 2>/dev/null && [ -n \"$FULLSEND_SESSIONS_REPO\" ] && [ -f \"$FULLSEND_SESSIONS_REPO/scripts/export-session.sh\" ] && exec bash \"$FULLSEND_SESSIONS_REPO/scripts/export-session.sh\" || true'"
+            "command": "bash -c '. ~/.config/fullsend/sessions.env 2>/dev/null && [ -n \"$FULLSEND_SESSIONS_REPO\" ] && [ -f \"$FULLSEND_SESSIONS_REPO/skills/fs-sessions/scripts/export-session.sh\" ] && exec bash \"$FULLSEND_SESSIONS_REPO/skills/fs-sessions/scripts/export-session.sh\" || true'"
           }
         ]
       }
@@ -81,7 +81,7 @@ Use `jq` to merge. If `hooks.SessionEnd` already exists, check if the fs-session
 if jq -e '.hooks.SessionEnd[]?.hooks[]? | select(.command | contains("export-session.sh"))' "$SETTINGS_FILE" >/dev/null 2>&1; then
   echo "Hook already installed."
 else
-  HOOK='{"matcher":"","hooks":[{"type":"command","command":"bash -c '\'''. ~/.config/fullsend/sessions.env 2>/dev/null && [ -n \"$FULLSEND_SESSIONS_REPO\" ] && [ -f \"$FULLSEND_SESSIONS_REPO/scripts/export-session.sh\" ] && exec bash \"$FULLSEND_SESSIONS_REPO/scripts/export-session.sh\" || true'\''\""}]}'
+  HOOK='{"matcher":"","hooks":[{"type":"command","command":"bash -c '\'''. ~/.config/fullsend/sessions.env 2>/dev/null && [ -n \"$FULLSEND_SESSIONS_REPO\" ] && [ -f \"$FULLSEND_SESSIONS_REPO/skills/fs-sessions/scripts/export-session.sh\" ] && exec bash \"$FULLSEND_SESSIONS_REPO/skills/fs-sessions/scripts/export-session.sh\" || true'\''\""}]}'
 
   jq --argjson hook "$HOOK" '
     .hooks //= {} |
