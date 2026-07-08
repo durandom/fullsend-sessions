@@ -35,9 +35,9 @@ Sessions are stored as JSONL files matching the AgentsView Claude discovery layo
 Share sessions interactively without the hook:
 
 ```bash
-./scripts/fs-sessions.sh              # pick from recent sessions
-./scripts/fs-sessions.sh --last       # share the most recent session
-./scripts/fs-sessions.sh --list       # list recent sessions
+./skills/fs-sessions/scripts/fs-sessions.sh              # pick from recent sessions
+./skills/fs-sessions/scripts/fs-sessions.sh --last       # share the most recent session
+./skills/fs-sessions/scripts/fs-sessions.sh --list       # list recent sessions
 ```
 
 ## AgentsView
@@ -81,11 +81,14 @@ sessions/                             # shared session transcripts
   <user>_<project>/
     <session-id>.jsonl
 scripts/
-  export-session.sh                   # SessionEnd hook script
-  fs-sessions.sh                      # interactive CLI
   fetch-fullsend-runs.sh              # download fullsend runs from GH Actions
   import-local-run.sh                 # import local fullsend runs
-skills/fs-sessions/                   # agent skill (npx skills)
+skills/fs-sessions/                   # agent skill (npx skills add)
+  SKILL.md                            # skill definition
+  scripts/
+    export-session.sh                 # SessionEnd hook script
+    fs-sessions.sh                    # interactive CLI
+  references/                         # skill command references
 ```
 
 ## Prerequisites

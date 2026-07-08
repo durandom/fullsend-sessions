@@ -15,7 +15,7 @@ set -euo pipefail
 
 CLAUDE_PROJECTS_DIR="${HOME}/.claude/projects"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-SESSIONS_REPO="$(cd "$SCRIPT_DIR/.." && pwd)"
+SESSIONS_REPO="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 SESSIONS_DIR="${SESSIONS_REPO}/sessions"
 
 MAX_DISPLAY=10
