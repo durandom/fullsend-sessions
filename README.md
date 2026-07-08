@@ -7,8 +7,8 @@ Sessions are auto-exported when a Claude Code session ends, committed to this sh
 ## Quick start
 
 ```bash
-# 1. Clone
-git clone git@github.com:durandom/fullsend-sessions.git ~/src/rhdh/fullsend-sessions
+# 1. Clone (anywhere you like)
+git clone git@github.com:durandom/fullsend-sessions.git
 
 # 2. Install the skill
 npx skills add durandom/fullsend-sessions --skill fs-sessions
