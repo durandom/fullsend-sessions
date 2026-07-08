@@ -13,7 +13,7 @@ Share and browse team Claude Code session transcripts via a shared git repo.
 
 ## Overview
 
-Sessions are auto-exported and pushed on session end via a `SessionEnd` hook installed in user-global `~/.claude/settings.json`. AgentsView serves them for browsing, searching, and analysis.
+Sessions are auto-exported and pushed on session end via a `SessionEnd` hook in the project's `.claude/settings.json`. AgentsView serves them for browsing, searching, and analysis.
 
 ### How it works
 

@@ -17,7 +17,7 @@ npx skills add durandom/fullsend-sessions --skill fs-sessions
 /fs-sessions setup
 ```
 
-Setup creates `~/.config/fullsend/sessions.env` and installs a `SessionEnd` hook into your global `~/.claude/settings.json`. After that, every session is auto-exported and pushed — no manual steps needed.
+Setup creates `~/.config/fullsend/sessions.env` and installs a `SessionEnd` hook into the project's `.claude/settings.json`. After that, sessions from that project are auto-exported and pushed on session end.
 
 ## How it works
 
