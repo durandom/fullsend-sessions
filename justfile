@@ -1,9 +1,9 @@
-compose := if `command -v podman 2>/dev/null || true` != "" { "podman compose" } else { "docker compose" }
+compose := "podman compose"
 sessions_env := home_directory() / ".config/fullsend/sessions.env"
 
 [private]
 start-viewer runs="./runs":
-    AGENTSVIEW_HOST=$(hostname).local AGENTSVIEW_RUNS={{ runs }} {{ compose }} -f docker-compose.fullsend.yaml up -d
+    AGENTSVIEW_HOST=$(hostname).local AGENTSVIEW_RUNS={{ runs }} {{ compose }} -f compose.yaml up -d
     @echo "AgentsView: http://$(hostname).local:${AGENTSVIEW_PORT:-8081}"
 
 [private]
@@ -47,4 +47,4 @@ viewer: ensure-podman
 
 # Stop AgentsView container
 down:
-    {{ compose }} -f docker-compose.fullsend.yaml down -v
+    {{ compose }} -f compose.yaml down -v
