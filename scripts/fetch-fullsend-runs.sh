@@ -130,5 +130,5 @@ done
 
 echo "Done: ${total_fetched} fetched, ${total_skipped} skipped"
 if [ "$total_fetched" -gt 0 ] || [ "$total_skipped" -gt 0 ]; then
-  echo "Start viewer: just viewer   (or: podman compose -f docker-compose.fullsend.yaml up -d)"
+  echo "Start viewer: just viewer"
 fi

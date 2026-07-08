@@ -94,5 +94,5 @@ skills/fs-sessions/                   # agent skill (npx skills add)
 ## Prerequisites
 
 - `jq`, `git`
-- `podman` or `docker` (for AgentsView)
+- `podman` (for AgentsView)
 - `gh` (for fetching fullsend runs)
