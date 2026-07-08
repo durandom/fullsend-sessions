@@ -36,7 +36,7 @@ MAX_DISPLAY=10
 die() { echo "error: $*" >&2; exit 1; }
 
 get_session_title() {
-  jq -r 'select(.type == "ai-title") | .aiTitle' "$1" 2>/dev/null | tail -1
+  jq -r 'select(.type == "ai-title") | .aiTitle' "$1" 2>/dev/null | tail -1 || true
 }
 
 get_session_id() {
@@ -94,7 +94,7 @@ display_sessions() {
     project="$(basename "$(dirname "$jsonl")")"
     # Show last two path segments for readability
     local cwd
-    cwd="$(jq -r 'select(.cwd != null and .type == "user" and .sessionId != null) | .cwd' "$jsonl" 2>/dev/null | head -1)"
+    cwd="$(jq -r 'select(.cwd != null and .type == "user" and .sessionId != null) | .cwd' "$jsonl" 2>/dev/null | head -1 || true)"
     if [ -n "$cwd" ]; then
       project="$(basename "$(dirname "$cwd")")/$(basename "$cwd")"
     fi
@@ -122,7 +122,7 @@ share_session() {
   session_id="$(get_session_id "$jsonl")"
   username="$(get_username)"
 
-  cwd="$(jq -r 'select(.cwd != null and .type == "user" and .sessionId != null) | .cwd' "$jsonl" 2>/dev/null | head -1)"
+  cwd="$(jq -r 'select(.cwd != null and .type == "user" and .sessionId != null) | .cwd' "$jsonl" 2>/dev/null | head -1 || true)"
   if [ -n "$cwd" ]; then
     project_name="$(basename "$cwd")"
   else
