@@ -19,7 +19,7 @@ Check if running inside the fullsend-sessions repo (look for `skills/fs-sessions
 
 ```bash
 # Try cwd first, then common locations
-for candidate in "." "$HOME/src/rhdh/fullsend-sessions" "$HOME/fullsend-sessions"; do
+for candidate in "." "$HOME/fullsend-sessions" "$HOME/src/fullsend-sessions"; do
   if [ -f "$candidate/skills/fs-sessions/scripts/export-session.sh" ]; then
     echo "Found: $(cd "$candidate" && pwd)"
     break
@@ -27,9 +27,9 @@ for candidate in "." "$HOME/src/rhdh/fullsend-sessions" "$HOME/fullsend-sessions
 done
 ```
 
-If not found, tell the user to clone first:
+If not found, ask the user where they cloned the repo, or tell them to clone it first:
 ```bash
-git clone git@github.com:durandom/fullsend-sessions.git ~/src/rhdh/fullsend-sessions
+git clone git@github.com:durandom/fullsend-sessions.git
 ```
 
 Store the resolved absolute path as `SESSIONS_REPO` for the remaining steps.
