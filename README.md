@@ -11,7 +11,7 @@ Sessions are auto-exported when a Claude Code session ends, committed to this sh
 git clone git@github.com:durandom/fullsend-sessions.git
 
 # 2. Install the skill
-npx skills add durandom/fullsend-sessions --skill fs-sessions
+npx skills add git@github.com:durandom/fullsend-sessions.git --skill fs-sessions
 
 # 3. Run setup (in any Claude Code session)
 /fs-sessions setup
