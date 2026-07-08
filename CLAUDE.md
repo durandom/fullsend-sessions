@@ -25,7 +25,7 @@ just up                # fetch + start AgentsView
 SessionEnd hook → `export-session.sh` → copies transcript → commits → pulls → pushes (all best-effort, silent on failure).
 
 Config: `~/.config/fullsend/sessions.env` defines `FULLSEND_SESSIONS_REPO`.
-Hook: installed in user-global `~/.claude/settings.json`.
+Hook: installed per-project in `.claude/settings.json`.
 
 ## Conventions
 

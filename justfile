@@ -1,31 +1,48 @@
 compose := if `command -v podman 2>/dev/null || true` != "" { "podman compose" } else { "docker compose" }
+sessions_env := home_directory() / ".config/fullsend/sessions.env"
 
 [private]
 start-viewer runs="./runs":
-    {{ compose }} -f docker-compose.fullsend.yaml up -d
+    AGENTSVIEW_HOST=$(hostname).local AGENTSVIEW_RUNS={{ runs }} {{ compose }} -f docker-compose.fullsend.yaml up -d
     @echo "AgentsView: http://$(hostname).local:${AGENTSVIEW_PORT:-8081}"
+
+[private]
+ensure-podman:
+    #!/usr/bin/env bash
+    if command -v podman &>/dev/null; then
+      if ! podman machine inspect --format '{{"{{.State}}"}}' 2>/dev/null | grep -q running; then
+        echo "Starting podman machine..."
+        podman machine start
+      fi
+    fi
 
 # Download fullsend runs from GitHub Actions
 fetch:
     ./scripts/fetch-fullsend-runs.sh
 
 # Fetch runs + start AgentsView container
-up: fetch
+up: ensure-podman fetch
     @just start-viewer
 
 # Import local fullsend run(s) + start AgentsView (only local runs shown)
-local dir="":
+local dir="": ensure-podman
     ./scripts/import-local-run.sh {{ if dir != "" { dir } else { "" } }}
-    AGENTSVIEW_RUNS=./runs-local {{ compose }} -f docker-compose.fullsend.yaml up -d
-    @echo "AgentsView: http://$(hostname).local:${AGENTSVIEW_PORT:-8081}"
+    @just start-viewer "./runs-local"
 
 # Browse shared team sessions in AgentsView
-sessions:
-    AGENTSVIEW_RUNS=./sessions {{ compose }} -f docker-compose.fullsend.yaml up -d
-    @echo "AgentsView: http://$(hostname).local:${AGENTSVIEW_PORT:-8081}"
+sessions: ensure-podman
+    #!/usr/bin/env bash
+    sessions_dir="./sessions"
+    if [ -f "{{ sessions_env }}" ]; then
+      source "{{ sessions_env }}"
+      if [ -n "${FULLSEND_SESSIONS_REPO:-}" ] && [ -d "${FULLSEND_SESSIONS_REPO}/sessions" ]; then
+        sessions_dir="${FULLSEND_SESSIONS_REPO}/sessions"
+      fi
+    fi
+    just start-viewer "$sessions_dir"
 
 # Start AgentsView without fetching (use after manual imports)
-viewer:
+viewer: ensure-podman
     @just start-viewer
 
 # Stop AgentsView container

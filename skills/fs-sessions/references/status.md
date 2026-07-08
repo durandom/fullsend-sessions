@@ -34,9 +34,9 @@ Check and report each item:
    git log --oneline -1 '@{upstream}' 2>/dev/null
    ```
 
-6. **Hook installed**: Is the SessionEnd hook present in `~/.claude/settings.json`?
+6. **Hook installed**: Is the SessionEnd hook present in this project's `.claude/settings.json`?
    ```bash
-   jq -e '.hooks.SessionEnd[]?.hooks[]? | select(.command | contains("export-session.sh"))' ~/.claude/settings.json >/dev/null 2>&1 \
+   jq -e '.hooks.SessionEnd[]?.hooks[]? | select(.command | contains("export-session.sh"))' .claude/settings.json >/dev/null 2>&1 \
      && echo "Hook: installed" || echo "Hook: NOT installed"
    ```
 
