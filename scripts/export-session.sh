@@ -96,3 +96,8 @@ mkdir -p "$PROJECT_DIR"
 git -C "$FULLSEND_SESSIONS_REPO" add "sessions/${USERNAME}_${PROJECT}/${SESSION_ID}.jsonl"
 git -C "$FULLSEND_SESSIONS_REPO" commit -q -m "feat: add session ${USERNAME}/${PROJECT}/${SESSION_ID}" \
   2>/dev/null || true
+
+# --- Push (best-effort, silent on failure) -----------------------------------
+
+git -C "$FULLSEND_SESSIONS_REPO" pull --rebase -q 2>/dev/null || true
+git -C "$FULLSEND_SESSIONS_REPO" push -q 2>/dev/null || true
