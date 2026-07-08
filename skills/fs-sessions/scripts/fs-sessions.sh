@@ -14,8 +14,19 @@
 set -euo pipefail
 
 CLAUDE_PROJECTS_DIR="${HOME}/.claude/projects"
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-SESSIONS_REPO="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+CONFIG_FILE="${HOME}/.config/fullsend/sessions.env"
+
+# Load repo path from config; fall back to deriving from script location
+if [ -f "$CONFIG_FILE" ]; then
+  # shellcheck source=/dev/null
+  . "$CONFIG_FILE"
+fi
+if [ -n "${FULLSEND_SESSIONS_REPO:-}" ] && [ -d "$FULLSEND_SESSIONS_REPO" ]; then
+  SESSIONS_REPO="$FULLSEND_SESSIONS_REPO"
+else
+  SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+  SESSIONS_REPO="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+fi
 SESSIONS_DIR="${SESSIONS_REPO}/sessions"
 
 MAX_DISPLAY=10
