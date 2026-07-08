@@ -8,10 +8,10 @@ Start AgentsView to browse shared sessions.
 just sessions
 ```
 
-For LAN access:
-```bash
-AGENTSVIEW_HOST=deimos.local just sessions
-```
+This will:
+1. Start the podman machine if not already running
+2. Read `~/.config/fullsend/sessions.env` to find the sessions directory (`FULLSEND_SESSIONS_REPO`)
+3. Start AgentsView with `--public-url` set to `$(hostname).local` for LAN access
 
 To stop:
 ```bash

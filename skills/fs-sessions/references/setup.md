@@ -44,13 +44,13 @@ EOF
 chmod 600 ~/.config/fullsend/sessions.env
 ```
 
-### 4. Install the SessionEnd hook (user-global)
+### 4. Install the SessionEnd hook (project-local)
 
-Read `~/.claude/settings.json`, merge the SessionEnd hook, write it back. The hook must be in the **user-global** settings so it fires for all projects.
+Install the hook into the **current project's** `.claude/settings.json` so only this project auto-exports sessions.
 
 ```bash
-SETTINGS_FILE="$HOME/.claude/settings.json"
-mkdir -p "$HOME/.claude"
+SETTINGS_FILE=".claude/settings.json"
+mkdir -p ".claude"
 ```
 
 If `$SETTINGS_FILE` exists, read it. Otherwise start with `{}`.
@@ -77,22 +77,25 @@ The hook entry to merge:
 Use `jq` to merge. If `hooks.SessionEnd` already exists, check if the fs-sessions hook is already present (search for `export-session.sh` in the command string). If present, skip. If not, append to the array.
 
 ```bash
-# Check if already installed
 if jq -e '.hooks.SessionEnd[]?.hooks[]? | select(.command | contains("export-session.sh"))' "$SETTINGS_FILE" >/dev/null 2>&1; then
-  echo "Hook already installed."
+  echo "Hook already installed in $SETTINGS_FILE"
 else
-  HOOK='{"matcher":"","hooks":[{"type":"command","command":"bash -c '\'''. ~/.config/fullsend/sessions.env 2>/dev/null && [ -n \"$FULLSEND_SESSIONS_REPO\" ] && [ -f \"$FULLSEND_SESSIONS_REPO/skills/fs-sessions/scripts/export-session.sh\" ] && exec bash \"$FULLSEND_SESSIONS_REPO/skills/fs-sessions/scripts/export-session.sh\" || true'\''\""}]}'
-
-  jq --argjson hook "$HOOK" '
-    .hooks //= {} |
-    .hooks.SessionEnd //= [] |
-    .hooks.SessionEnd += [$hook]
-  ' "$SETTINGS_FILE" > "${SETTINGS_FILE}.tmp" && mv "${SETTINGS_FILE}.tmp" "$SETTINGS_FILE"
+  jq '. * {
+    "hooks": {
+      "SessionEnd": (((.hooks // {}).SessionEnd // []) + [{
+        "matcher": "",
+        "hooks": [{
+          "type": "command",
+          "command": "bash -c '"'"'. ~/.config/fullsend/sessions.env 2>/dev/null && [ -n \"$FULLSEND_SESSIONS_REPO\" ] && [ -f \"$FULLSEND_SESSIONS_REPO/skills/fs-sessions/scripts/export-session.sh\" ] && exec bash \"$FULLSEND_SESSIONS_REPO/skills/fs-sessions/scripts/export-session.sh\" || true'"'"'"
+        }]
+      }])
+    }
+  }' "$SETTINGS_FILE" > "${SETTINGS_FILE}.tmp" && mv "${SETTINGS_FILE}.tmp" "$SETTINGS_FILE"
   echo "Hook installed into $SETTINGS_FILE"
 fi
 ```
 
-**Important**: The jq merge above is tricky to get right with shell escaping. Prefer reading the current file, constructing the new JSON programmatically, and writing it back. Show the user the diff of what changed.
+Show the user what changed. Remind them to commit `.claude/settings.json` so teammates get the hook too.
 
 ### 5. Verify
 
@@ -102,9 +105,10 @@ Report the setup state:
 echo ""
 echo "=== Setup complete ==="
 echo "Config:  ~/.config/fullsend/sessions.env"
-echo "Hook:    ~/.claude/settings.json (SessionEnd)"
+echo "Hook:    .claude/settings.json (SessionEnd)"
 echo "Repo:    ${SESSIONS_REPO}"
 echo ""
-echo "Sessions will be auto-exported and pushed when you end a Claude Code session."
+echo "Sessions from this project will be auto-exported and pushed on session end."
+echo "Commit .claude/settings.json so teammates get the hook too."
 echo "Run /fs-sessions status to verify after your next session."
 ```
