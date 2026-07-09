@@ -74,9 +74,15 @@ Once installed, use `/fs-sessions` in any Claude Code session:
 | `/fs-sessions pull` | Pull team sessions from remote |
 | `/fs-sessions view` | Start AgentsView |
 
+## Pod
+
+This repo is home to the RHDH AI-Augmented Pod — a focused sub-team experimenting with AI-driven engineering workflows. See [docs/](docs/) for the charter and operating principles.
+
 ## Directory layout
 
 ```
+docs/                                 # Pod charter and commandments
+meetings/transcripts/                 # Google Meet transcript exports
 sessions/                             # shared session transcripts
   <user>_<project>/
     <session-id>.jsonl
