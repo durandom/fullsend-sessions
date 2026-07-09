@@ -144,9 +144,16 @@ share_session() {
   local dest_dir="${SESSIONS_DIR}/${username}_${project_name}"
   local dest_file="${dest_dir}/${session_id}.jsonl"
 
+  local verb="add"
   if [ -f "$dest_file" ]; then
-    echo "Already shared: ${username}_${project_name}/${session_id}.jsonl"
-    return 0
+    local src_size dest_size
+    src_size="$(wc -c < "$jsonl")"
+    dest_size="$(tail -n +2 "$dest_file" | wc -c)"
+    if [ "$src_size" -eq "$dest_size" ]; then
+      echo "Unchanged: ${username}_${project_name}/${session_id}.jsonl"
+      return 0
+    fi
+    verb="update"
   fi
 
   # Build metadata line
@@ -174,7 +181,7 @@ share_session() {
 
   # Commit
   git -C "$SESSIONS_REPO" add "sessions/${username}_${project_name}/${session_id}.jsonl"
-  git -C "$SESSIONS_REPO" commit -q -m "feat: add session ${username}/${project_name}/${session_id}"
+  git -C "$SESSIONS_REPO" commit -q -m "feat: ${verb} session ${username}/${project_name}/${session_id}"
   echo "Committed."
 
   # Push
