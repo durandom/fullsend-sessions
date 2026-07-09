@@ -7,20 +7,20 @@ Automated first-time setup for session sharing. Run each step, report results.
 ### 1. Check prerequisites
 
 ```bash
-command -v jq >/dev/null 2>&1 && echo "jq: ok" || echo "jq: MISSING"
+command -v python3 >/dev/null 2>&1 && echo "python3: ok" || echo "python3: MISSING"
 command -v git >/dev/null 2>&1 && echo "git: ok" || echo "git: MISSING"
 ```
 
-If missing, tell the user to install them and stop.
+If missing, tell the user to install them and stop. Note: `jq` is no longer required — the Python scripts handle JSON natively.
 
 ### 2. Locate the sessions repo
 
-Check if running inside the fullsend-sessions repo (look for `skills/fs-sessions/scripts/export-session.sh`):
+Check if running inside the fullsend-sessions repo (look for `skills/fs-sessions/scripts/export-session`):
 
 ```bash
 # Try cwd first, then common locations
 for candidate in "." "$HOME/fullsend-sessions" "$HOME/src/fullsend-sessions"; do
-  if [ -f "$candidate/skills/fs-sessions/scripts/export-session.sh" ]; then
+  if [ -f "$candidate/skills/fs-sessions/scripts/export-session" ]; then
     echo "Found: $(cd "$candidate" && pwd)"
     break
   fi
@@ -65,7 +65,7 @@ The hook entry to merge:
         "hooks": [
           {
             "type": "command",
-            "command": "bash -c '. ~/.config/fullsend/sessions.env 2>/dev/null && [ -n \"$FULLSEND_SESSIONS_REPO\" ] && [ -f \"$FULLSEND_SESSIONS_REPO/skills/fs-sessions/scripts/export-session.sh\" ] && exec bash \"$FULLSEND_SESSIONS_REPO/skills/fs-sessions/scripts/export-session.sh\" || true'"
+            "command": "bash -c '. ~/.config/fullsend/sessions.env 2>/dev/null && [ -n \"$FULLSEND_SESSIONS_REPO\" ] && [ -f \"$FULLSEND_SESSIONS_REPO/skills/fs-sessions/scripts/export-session\" ] && exec python3 \"$FULLSEND_SESSIONS_REPO/skills/fs-sessions/scripts/export-session\" || true'"
           }
         ]
       }
@@ -74,10 +74,10 @@ The hook entry to merge:
 }
 ```
 
-Use `jq` to merge. If `hooks.SessionEnd` already exists, check if the fs-sessions hook is already present (search for `export-session.sh` in the command string). If present, skip. If not, append to the array.
+Use `jq` to merge. If `hooks.SessionEnd` already exists, check if the fs-sessions hook is already present (search for `export-session` in the command string). If present, skip. If not, append to the array.
 
 ```bash
-if jq -e '.hooks.SessionEnd[]?.hooks[]? | select(.command | contains("export-session.sh"))' "$SETTINGS_FILE" >/dev/null 2>&1; then
+if jq -e '.hooks.SessionEnd[]?.hooks[]? | select(.command | contains("export-session"))' "$SETTINGS_FILE" >/dev/null 2>&1; then
   echo "Hook already installed in $SETTINGS_FILE"
 else
   jq '. * {
@@ -86,7 +86,7 @@ else
         "matcher": "",
         "hooks": [{
           "type": "command",
-          "command": "bash -c '"'"'. ~/.config/fullsend/sessions.env 2>/dev/null && [ -n \"$FULLSEND_SESSIONS_REPO\" ] && [ -f \"$FULLSEND_SESSIONS_REPO/skills/fs-sessions/scripts/export-session.sh\" ] && exec bash \"$FULLSEND_SESSIONS_REPO/skills/fs-sessions/scripts/export-session.sh\" || true'"'"'"
+          "command": "bash -c '"'"'. ~/.config/fullsend/sessions.env 2>/dev/null && [ -n \"$FULLSEND_SESSIONS_REPO\" ] && [ -f \"$FULLSEND_SESSIONS_REPO/skills/fs-sessions/scripts/export-session\" ] && exec python3 \"$FULLSEND_SESSIONS_REPO/skills/fs-sessions/scripts/export-session\" || true'"'"'"
         }]
       }])
     }
