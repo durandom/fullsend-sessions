@@ -29,7 +29,7 @@ else
 fi
 SESSIONS_DIR="${SESSIONS_REPO}/sessions"
 
-MAX_DISPLAY=10
+MAX_DISPLAY=20
 
 # --- Helpers ----------------------------------------------------------------
 
@@ -65,6 +65,17 @@ get_username() {
     || echo "${USER:-unknown}"
 }
 
+human_size() {
+  local bytes=$1
+  if [ "$bytes" -ge 1048576 ]; then
+    printf '%dM' $((bytes / 1048576))
+  elif [ "$bytes" -ge 1024 ]; then
+    printf '%dK' $((bytes / 1024))
+  else
+    printf '%dB' "$bytes"
+  fi
+}
+
 # --- Discover sessions ------------------------------------------------------
 
 discover_sessions() {
@@ -84,15 +95,14 @@ display_sessions() {
   local i=1
 
   printf '\n'
-  printf '  %-4s %-20s %-18s %s\n' "#" "PROJECT" "MODIFIED" "TITLE"
-  printf '  %-4s %-20s %-18s %s\n' "---" "--------------------" "------------------" "-----"
+  printf '  %-4s %-40s %-18s %7s %6s %s\n' "#" "PROJECT" "MODIFIED" "SIZE" "MSGS" "TITLE"
+  printf '  %-4s %-40s %-18s %7s %6s %s\n' "---" "----------------------------------------" "------------------" "-------" "------" "-----"
 
   for line in "${lines[@]}"; do
     local mtime jsonl project_dir project title
     IFS='|' read -r mtime jsonl <<< "$line"
 
     project="$(basename "$(dirname "$jsonl")")"
-    # Show last two path segments for readability
     local cwd
     cwd="$(jq -r 'select(.cwd != null and .type == "user" and .sessionId != null) | .cwd' "$jsonl" 2>/dev/null | head -1 || true)"
     if [ -n "$cwd" ]; then
@@ -101,13 +111,14 @@ display_sessions() {
 
     title="$(get_session_title "$jsonl")"
     [ -z "$title" ] && title="(untitled)"
-    # Truncate title
     [ ${#title} -gt 50 ] && title="${title:0:47}..."
 
-    local ftime
+    local ftime fsize msg_count
     ftime="$(format_time "$mtime")"
+    fsize="$(human_size "$(wc -c < "$jsonl")")"
+    msg_count="$(wc -l < "$jsonl")"
 
-    printf '  %-4s %-20s %-18s %s\n' "[$i]" "$project" "$ftime" "$title"
+    printf '  %-4s %-40s %-18s %7s %6s %s\n' "[$i]" "$project" "$ftime" "$fsize" "$msg_count" "$title"
     i=$((i + 1))
   done
   printf '\n'
