@@ -1,0 +1,1216 @@
+﻿Marcel, Christoph and their agents
+Teilnehmer
+Christoph Jerolimov, Marcel Hild
+Transkript
+Christoph Jerolimov: So zur Verwirrung.
+Marcel Hild: Okay,
+Christoph Jerolimov: Nein, genau.
+Christoph Jerolimov: Also ich kann mal sagen auf einer Highlevel Ebene, was mich momentan so rumtreibt, wenn wenn ich
+Marcel Hild: warte mal noch.
+Marcel Hild: Ähm,
+Christoph Jerolimov: soll
+Marcel Hild: wie priorisierst du jetzt?
+Marcel Hild: Siehst du dann das, was in Progress ist, oder ist das einfach intrinsisches Wissen von dir?
+Marcel Hild: Okay,
+Christoph Jerolimov: interis das wissen.
+Marcel Hild: du weißt also, was da los ist und dementsprechend holst du dir das raus.
+Christoph Jerolimov: Ja.
+Marcel Hild: Aber tendenziell wäre es ja so, dass du die in die in Progress einfach abarbeitest, ne?
+Christoph Jerolimov: Exakt.
+Christoph Jerolimov: Und den perfekt.
+Marcel Hild: Oh ja.
+Christoph Jerolimov: Also, das sind auch zu viele, wie du siehst, ne?
+Marcel Hild: Ja.
+Christoph Jerolimov: Also das ist ja Quatsch.
+Marcel Hild: Ach so, okay.
+Christoph Jerolimov: Also ein paar sind Features.
+Christoph Jerolimov: Das hier sind Features, wenn ich richtig bin.
+Marcel Hild: Ja.
+Christoph Jerolimov: Die ist natürlich verwirrend, weil man muss ja eigentlich nur an den Stories arbeiten und die Features nur im Auge behalten.
+Marcel Hild: Ja.
+Christoph Jerolimov: Also die Homepage, das Homepage Plugin braucht New Frontend Support für das Homepage Backend.
+Christoph Jerolimov: Das ist einfach noch nicht implementiert.
+Christoph Jerolimov: Das muss implementiert werden.
+Christoph Jerolimov: Das eigentlich ganz guter Agent Task vielleicht.
+Marcel Hild: Ja.
+Christoph Jerolimov: In der Homepage muss auch das alte Frontend System mal rausgeschmissen werden.
+Christoph Jerolimov: Das macht einfach keinen Sinn mehr.
+Christoph Jerolimov: Da müsste es ein Ticket für geben.
+Christoph Jerolimov: Das ist so auf der Homepage Ebene zu tun.
+Christoph Jerolimov: Dann haben wir Performance Sachen.
+Christoph Jerolimov: Da habe ich das Projekt, was ich da gestartet habe, jetzt nach Red Developer migriert.
+Marcel Hild: อ
+Christoph Jerolimov: Da möchte ich Gitub Workflows haben, die die Container Inventesages bauen, weil die habe ich damals auf meiner Maschine gebaut.
+Christoph Jerolimov: Das ist ja quatschi quatschi.
+Christoph Jerolimov: Dafür musste ich allerdings wahrscheinlich Tomas fragen, dass er mir ein Quay Robot Account anlegt, der die richtigen Permissions hat und die danach eintragen, weil das Git Workflow gibt's schon.
+Christoph Jerolimov: Danach würde ich das wahrscheinlich mal testen, dass das alles funktioniert.
+Christoph Jerolimov: Dafür bei diesen ganzen Load Balancing, das ist weniger meistens Codingarbeit als manuellen Cluster starten, was ich über äh über uns Klusterboard mache, also auf Slack,
+Christoph Jerolimov: dann eine Stunde warte und dann auf diesem Klusterboard mit diesem Projekt via Helm ähm die HD Instanzen hochziehen.
+Christoph Jerolimov: hier und dann die Skripte laufen lasse, die die Performance Metricken ausspucken.
+Christoph Jerolimov: Könnte den Skill vielleicht tun, keine Ahnung.
+Christoph Jerolimov: Ähm, was haben wir hier noch?
+Christoph Jerolimov: Ja, relativ wichtig auch noch beim New Frontend System ist, ich habe seit Ewigkeiten ein Ticket, das sagt die Sidebah, die ist beim neuen Frontend System komplett statisch in Backstage.
+Christoph Jerolimov: Also, die ist z dynamisch, aber die ist nicht so dynamisch, wie unsere Kunden das möchten.
+Christoph Jerolimov: Unsere Kunden wollen, da könnte man es wahrscheinlich drüber streiten, ja, nicht alles immer über Plugins und alles selber implementieren.
+Christoph Jerolimov: Ähm, das neue Freundssystem ist da sehr limitiert noch.
+Christoph Jerolimov: Da müssen wir ein bisschen was schreiben.
+Christoph Jerolimov: Da habe ich schon mal was angefangen, aber ist nicht fertig geworden.
+Christoph Jerolimov: Das wären so die Hauptbaustellen, die ich wahrscheinlich heute versuchen würde anzugehen, mit sich halt nicht fertig werden würde.
+Christoph Jerolimov: Äh ich kann mal hier so drüber scrollen.
+Christoph Jerolimov: Homepage.
+Christoph Jerolimov: Homepage.
+Christoph Jerolimov: Sit ist das, was ich gesagt habe.
+Christoph Jerolimov: Ähm ja,
+Marcel Hild: Ja.
+Christoph Jerolimov: damit würde ich
+Marcel Hild: Okay.
+Christoph Jerolimov: anfangen.
+Marcel Hild: Wieso äh machst du dann drei Sachen an einem Tag?
+Christoph Jerolimov: Ja, wie gesagt, ich würde es wahrscheinlich nicht schaffen, aber das wären so die Dinge.
+Marcel Hild: Ja.
+Marcel Hild: Ja,
+Christoph Jerolimov: Eins davon könnte ich mir jetzt aussuchen.
+Marcel Hild: gut.
+Marcel Hild: Ja,
+Christoph Jerolimov: Versuche auch immer ein bisschen parallel zu machen,
+Marcel Hild: sollen wir Ja.
+Marcel Hild: Wieso wieso machst du das
+Christoph Jerolimov: aber das klappt natürlich immer
+Marcel Hild: parallel?
+Christoph Jerolimov: in der Hoffnung, dass ich damit fertig werde irgendwann mal.
+Marcel Hild: Okay.
+Marcel Hild: Aber ähm wäre es sinnvoller eine Sache so lange durchzuziehen, bis du nicht mehr weiter kannst und dann die nächste zu machen oder?
+Marcel Hild: Nur Frage, ne?
+Marcel Hild: Warum suchst du dir diese drei Sachen aus und sagst, an denen würde ich heute arbeiten?
+Marcel Hild: Oder sind dazwischen ähm so Stops,
+Christoph Jerolimov: Ja,
+Marcel Hild: wo du dann einfach auf irgendwas anderes wartest und dann zu dem nächsten
+Christoph Jerolimov: also also z.B.
+Marcel Hild: springst?
+Christoph Jerolimov: bei dem Lauttest, das ist halt eher so, ich fühle ein Skript aus, dann läuft das 20 Minuten,
+Marcel Hild: Okay.
+Christoph Jerolimov: da kann man ganz gut Sachen nebenher noch machen.
+Christoph Jerolimov: dazu kommt bei mir jetzt zumindestens, ich glaube, ich hoffe,
+Marcel Hild: Okay.
+Christoph Jerolimov: dass das Team weniger parallel macht, dass natürlich eine Menge auf Slack auch gefragt werden würde und dann macht man mal ein Review zwischendurch 20 Minuten
+Marcel Hild: Das sind so Slack und äh
+Christoph Jerolimov: plus Meetings.
+Marcel Hild: Review Meetings.
+Marcel Hild: Das sind Interrupts, ne?
+Christoph Jerolimov: Ja.
+Marcel Hild: Okay,
+00:05:00
+Christoph Jerolimov: Was wollte ich noch machen?
+Marcel Hild: wenn wir jetzt diese, also was ist denn von dem Homepage und Naff?
+Christoph Jerolimov: versuchen.
+Marcel Hild: Das sind der Coding Task, diese Performance Sache.
+Marcel Hild: Ähm, w ich mal ausklappern.
+Marcel Hild: Ähm, wie weit sind die beiden denn schon?
+Marcel Hild: Hast du bei beiden schon angefangen?
+Christoph Jerolimov: Homepage muss überlegen.
+Christoph Jerolimov: Äh, da hatte ich jetzt glaube ich noch nichts, also habe ich was anderes schon gemerged, aber das spezielle, also die beiden Task das Item mal rausschmeißen und vor allem das in der New Front System supporten.
+Christoph Jerolimov: Nee, ich glaube, damit habe ich noch nichts gemacht.
+Marcel Hild: Okay.
+Marcel Hild: Und äh bei der NaFB
+Christoph Jerolimov: Da gibt's auf jeden Fall gab's schon mal ein Working Progress requests.
+Marcel Hild: und das ist das beides Arbeit,
+Christoph Jerolimov: Du was her?
+Marcel Hild: wo nur du was dran machst oder nimmst du da Arbeit auf von anderen?
+Christoph Jerolimov: Das ist Arbeit, die ich gesagt habe, die mache ich.
+Christoph Jerolimov: Äh und andere machen andere Sachen, aber wir da gibt's jetzt wenig Überschneidung.
+Marcel Hild: Okay, okay,
+Christoph Jerolimov: Könnte jeder machen.
+Christoph Jerolimov: Ich weiß nicht,
+Marcel Hild: dann nee,
+Christoph Jerolimov: wie die Frage meint war.
+Christoph Jerolimov: Das kann jeder machen.
+Christoph Jerolimov: Das muss nicht ich machen.
+Marcel Hild: nee, nee.
+Marcel Hild: Ob schon, ob schon
+Christoph Jerolimov: Aber aber aber ich habe es gepickt,
+Marcel Hild: da
+Christoph Jerolimov: weil ich dachte, erstens ich habe da so gewisse Vorstellungen wahrscheinlich
+Marcel Hild: Ja, da hat Vorstellungen.
+Christoph Jerolimov: und äh sehe da so eine gewisse Wichtigkeit,
+Marcel Hild: Ja,
+Christoph Jerolimov: aber das eigentlich ist es auch nicht super
+Marcel Hild: okay, gut.
+Christoph Jerolimov: wichtig.
+Marcel Hild: Ähm, nee, Hintergrund der Frage war, ob jetzt schon existing Work da ist und ob das von anderen Leuten ist,
+Christoph Jerolimov: Ich
+Marcel Hild: weil dann haben wir eine größere Abstimmungs selbst wenn das äh aber wenn das nur von dir
+Christoph Jerolimov: könnte das jetzt quasi man man könnte das jetzt prompen,
+Marcel Hild: ist.
+Marcel Hild: Ja,
+Christoph Jerolimov: sage ich
+Marcel Hild: gut.
+Marcel Hild: Ähm,
+Christoph Jerolimov: mal.
+Marcel Hild: was wollen wir denn machen?
+Marcel Hild: Homepage oder NaB?
+Christoph Jerolimov: Homepage klingt für mich gut.
+Marcel Hild: Gut.
+Christoph Jerolimov: Weniger
+Marcel Hild: Risico.
+Marcel Hild: Dann zeigen wir mal das Feature.
+Christoph Jerolimov: Risiko.
+Marcel Hild: Welches ist das?
+Christoph Jerolimov: Also, das ist auf jeden Fall das Feature und das ist das Epic.
+Marcel Hild: Ja, dann lass mal vom Feature von Topdown reingehen.
+Christoph Jerolimov: Ja.
+Christoph Jerolimov: Ja,
+Marcel Hild: Die anderen müssen ja dann da drunter hängen,
+Christoph Jerolimov: genau.
+Marcel Hild: ne?
+Christoph Jerolimov: Genau.
+Christoph Jerolimov: Das müsste ja das Feature sein,
+Marcel Hild: Also,
+Christoph Jerolimov: ne?
+Marcel Hild: das haben wir RHDH Plan 1371 zur Mitschrift.
+Marcel Hild: Ähm, Frau Germinal, bitte notieren Sie.
+Marcel Hild: So, was lassen wir gerade mal quer lesen?
+Christoph Jerolimov: Ach,
+Marcel Hild: Upgrade homepage related to okay feature ja ich nur quer eine
+Christoph Jerolimov: zeigen.
+Christoph Jerolimov: อ
+Marcel Hild: Sekunde.
+Marcel Hild: Ist ja auch ganz schön viel Boiler Plates drin.
+Marcel Hild: Sehe ich das richtig?
+Marcel Hild: gerade bei Requirements.
+Marcel Hild: Okay.
+Marcel Hild: Ähm,
+Christoph Jerolimov: Kann sein, dass da Claud geholfen
+Marcel Hild: das war da ma ich mir Notizen.
+Marcel Hild: Warte, warte, ich mache mir
+Christoph Jerolimov: hat.
+Marcel Hild: Notizen.
+Marcel Hild: Warum ma ich mir die denn eigentlich händisch?
+Marcel Hild: Lass mal so machen.
+Marcel Hild: H Computer Spoiler plate in feature.
+Marcel Hild: Okay, dann sag mir mal, was du da rausliest.
+Marcel Hild: Ein TDR.
+Marcel Hild: Für mich höre ich da jetzt äh Homepage ist G, aber
+Christoph Jerolimov: Homepage Backend ist nicht G ist Teag Preview gewesen, soll jetzt G werden ähm dazu und es muss das New
+Marcel Hild: Ja.
+Christoph Jerolimov: Front System supporten.
+Christoph Jerolimov: Das Feature, was wir in dieses Backend eben eingebaut haben, ist also im Katalog promoten to GAG unterstützen ähm für die Default Widgets und
+Christoph Jerolimov: Customization ist ein Feature, was ähm Kunden aktivieren können, das wiederum dass wiederum ihre User Karten hin und her schieben können, das mal zum Standard machen.
+Christoph Jerolimov: Das ist jetzt nicht, das war immer von Kristof gewünscht, aber ähm es war nie der Standard.
+Christoph Jerolimov: Das war ma quasi drei unterschiedliche kleine
+Marcel Hild: Okay,
+Christoph Jerolimov: Minitas.
+Marcel Hild: sind diese drei Minitasks äh wenn man jetzt weiter rein drillt, wenn man soll mal runter und ist da noch mehr drunter.
+Christoph Jerolimov: Genau.
+Christoph Jerolimov: Also da drunter ist glaube ich nichts mehr spannendes Spoilerplate.
+Marcel Hild: Ja, und dann haben wir
+00:10:00
+Christoph Jerolimov: Da drunter ist ein Epic für uns, eins für Docs.
+Marcel Hild: da
+Christoph Jerolimov: Das wird immer irgendwie angelegt.
+Christoph Jerolimov: Also geht's runter ins Epic.
+Christoph Jerolimov: Das ist das hier.
+Marcel Hild: warte mal kurz, warte mal kurz.
+Marcel Hild: Ich mach mal äh auch mal, damit ich auch bisschen browsen kann,
+Christoph Jerolimov: Das
+Marcel Hild: äh mache ich mir meinen Cirer auf.
+Marcel Hild: Mich wahrscheinlich erst noch anmelden, aber es geht jetzt mit schönen schnellen Klicks.
+Marcel Hild: Man muss ja nur noch sich reingoogeln, sei denn, man ist beim SS oder nicht angemeldet.
+Marcel Hild: R D RH DH Plan und dann war das die Nummer das ne das das Feature war welche Nummer?
+Christoph Jerolimov: Plan.
+Marcel Hild: 137 1371.
+Christoph Jerolimov: Ja, und das andere dann IDP.
+Marcel Hild: Okay, will nur mal gucken, welche Kommentare da unten stehen.
+Marcel Hild: Ja, brauch nicht viel, ne?
+Marcel Hild: S nur hier habe ich das gemacht.
+Marcel Hild: Da habe ich das gemacht.
+Marcel Hild: Okay, dann geht's.
+Marcel Hild: Also, es gibt jetzt einen Epic da drunter, was für uns interessant ist, ne?
+Christoph Jerolimov: Ja.
+Marcel Hild: Okay, das ist 14103. Gut,
+Christoph Jerolimov: Ja, da steht nicht sches drin, aber es gibt ist das noch aufgebrochen Stories.
+Marcel Hild: sind da jetzt alle Stories drin, die wir eben aus diesem Feature schon haben?
+Marcel Hild: Also, wer das äh das runterbrechen, wir haben dieses eine Feature, wo ja irgendwie drei Arbeitsstränge drin sind.
+Christoph Jerolimov: Ja, es ist ein bisschen das Feature ist ein bisschen generischer vielleicht geschrieben und jetzt wird's halt im wird's halt spezifischer, ne?
+Christoph Jerolimov: ähm ob das ob das
+Marcel Hild: Aber die Idee wäre, dass es äh ein Epic da drunter
+Christoph Jerolimov: alles Es gibt ja nur ein Epic da
+Marcel Hild: gibt.
+Marcel Hild: Ja.
+Marcel Hild: Ja, aber das ist auch die Ziel.
+Christoph Jerolimov: drunter.
+Marcel Hild: Es gibt dann das Feature und dann haben wir da drunter einen Epic, was äh alles noch mal so
+Christoph Jerolimov: Genau, das Epic sollte in meiner Vorstellung technisch sein.
+Marcel Hild: zusammenhält.
+Christoph Jerolimov: Wir machen die Epics meistens per Team.
+Christoph Jerolimov: Also, wenn das Backend involviert wäre, dann hätten wir wahrscheinlich ein Epic für das Plugins Team.
+Christoph Jerolimov: Und hier ein Epic für uns.
+Marcel Hild: Ja,
+Christoph Jerolimov: Da wird es meistens
+Marcel Hild: okay.
+Christoph Jerolimov: aufgeteilt.
+Marcel Hild: Und das Feature ist das, was der Produktowner sieht.
+Christoph Jerolimov: Genau.
+Christoph Jerolimov: Und du kannst ja auch schon noch sehen.
+Christoph Jerolimov: Also der hat eigentlich, ich glaube der Met hat's geschrieben.
+Christoph Jerolimov: Genau.
+Christoph Jerolimov: Der hatte nur hier gesagt, mach mal GA.
+Christoph Jerolimov: Und dann habe ich glaube ich noch diese drei Punkte da hinzugeschrieben und gesagt hier von Engineering Seite, wir müssen das neue Freund System unterstützen, sonst blöd.
+Christoph Jerolimov: Und das Epic ist ja dann quasi von mir geschrieben,
+Marcel Hild: Okay.
+Christoph Jerolimov: bzw. in diesem Fall glaube ich, dass Mat hatte es auch schon vorbereitet, deswegen sieht's ein bisschen anders aus als meine Epics.
+Christoph Jerolimov: Ähm und ich habe es bestimmt dann noch mal bearbeitet, aber nicht viel.
+Christoph Jerolimov: Ich habe mich mehr drauf konzentriert, mein intrinsisches Wissen, was in dem Feature und dem Epic nicht hundertprozentig abgebildet ist, hier in Stories zu
+Marcel Hild: Okay.
+Christoph Jerolimov: gießen,
+Marcel Hild: Und wie viel ist von diesen Stories da jetzt schon äh drin?
+Marcel Hild: Von den drei Bracks?
+Christoph Jerolimov: wenn ähm Ähm, das müsste alles drin sein.
+Christoph Jerolimov: Also, das Labeling ist quasi das erste hier.
+Marcel Hild: Ja.
+Christoph Jerolimov: Das ist halt total einfach eigentlich.
+Christoph Jerolimov: Das müsste ein Overlay einfach sein.
+Christoph Jerolimov: GA durch TP durch GA ersetzen.
+Marcel Hild: Ja.
+Christoph Jerolimov: Dann haben wir das mit dem Airback Support.
+Christoph Jerolimov: Das ist das letzte hier.
+Christoph Jerolimov: Add Persona Support für New System Components und das Customization bei default, das gibt's glaube ich noch nicht.
+Marcel Hild: Okay, gut.
+Marcel Hild: Womit würdest du dann jetzt äh also das ist jetzt diese Chalt Items kann würdest mit welchen würdest du jetzt anfangen heute?
+Christoph Jerolimov: Wie gesagt, wahrscheinlich würde ich mit den Lord Test Sachen machen,
+Marcel Hild: Ja.
+Christoph Jerolimov: aber äh hier hier bleiben wir würde ich dann sagen,
+Marcel Hild: Ja, wir bleiben ja jetzt hier.
+Christoph Jerolimov: das hier macht am meisten Sinn,
+Marcel Hild: Ja.
+Christoph Jerolimov: weil es ein richtiger Implementierungstask quasi ist.
+Marcel Hild: Add persona support in the NFS Components.
+00:15:00
+Marcel Hild: Wie detailliert ist das jetzt schon?
+Christoph Jerolimov: Das würde ich sagen, das würde ich fast hoffen, dass das jemand so implementieren kann.
+Marcel Hild: Äh, ich find's ja nicht.
+Marcel Hild: Wel ist das?
+Marcel Hild: 14 615.
+Christoph Jerolimov: kannst ja kurz ähm Google Meet einfach schicken.
+Marcel Hild: Nee, ich ich bin ja hier drin.
+Christoph Jerolimov: Kannst es anklicken.
+Marcel Hild: Ich habe es nur da habe ich ich bin auch da brauch man n ja das das
+Christoph Jerolimov: Das
+Marcel Hild: letzte Backgrounds with edit
+Christoph Jerolimov: letzte
+Marcel Hild: default can configured like this.
+Marcel Hild: Ich muss auch ein bisschen mit so einem deutschen Akzent sprechen, weil wer die Transkriptsprache ist jetzt Englisch.
+Christoph Jerolimov: Wer ist ja Deutsch.
+Marcel Hild: Das ist bei meinem jetzt genau haben wir jetzt habt ihr auch Amazon Alexa bei euch zu Hause rumstehen?
+Christoph Jerolimov: Braen voll.
+Christoph Jerolimov: Grauen voll.
+Marcel Hild: Ja.
+Christoph Jerolimov: Ja.
+Marcel Hild: Hast du oder nicht?
+Christoph Jerolimov: Ja, wir haben Alexa rumstehen.
+Christoph Jerolimov: Wir haben leider noch kein Alexa plus.
+Marcel Hild: Nee,
+Christoph Jerolimov: Das wäre noch mal sch.
+Marcel Hild: kann man da auch drauf klicken.
+Christoph Jerolimov: Ja, aber kannst nur auf eine Warteliste
+Marcel Hild: Ach so, gut.
+Marcel Hild: Dann habe ich mich drauf gesetzt.
+Christoph Jerolimov: kommen.
+Marcel Hild: Falls habe ich eine Mail bekommen, das habe ich das äh angeklickt und die Kinder hassen die Stimme und es ist echt es ist wie Standup Comedy.
+Christoph Jerolimov: Von Alexa plus.
+Christoph Jerolimov: Jetzt hast
+Marcel Hild: Also gerade schon beim beim ein genau beim Einrichten ähm fing sie auf einmal an
+Christoph Jerolimov: du
+Marcel Hild: in mehreren Sprachen gleichzeitig zu sprechen, dann hört sie die ganze irgendwie äh die ganze Zeit zu.
+Marcel Hild: Ähm,
+Christoph Jerolimov: fängt einfach an zu
+Marcel Hild: dann sind ja manchmal sind so Sachen nicht auf äh Deutsch übersetzt,
+Christoph Jerolimov: reden.
+Marcel Hild: dann fängt sie an englischen Text auf mit einem starken deutschen Akzent zu sprechen.
+Marcel Hild: Es ist äh wirklich wie wie Standup Comedy mit einer AI.
+Marcel Hild: Ich äh selten so
+Christoph Jerolimov: We ich ich wir haben schon so oft über die wir haben schon so oft über die geflugt,
+Marcel Hild: gelacht.
+Christoph Jerolimov: dass wir echt gedacht haben, wir würden sie gerne rausschmeißen, weil sie ist einfach so schlecht.
+Marcel Hild: Ja.
+Christoph Jerolimov: Sie hat sich einfach in 10 Jahren nicht weiterentwickelt.
+Christoph Jerolimov: Sie ist nur schlechter geworden gefühlt.
+Marcel Hild: Äh,
+Christoph Jerolimov: Also die alte halt immer
+Marcel Hild: aber was Ja, genau.
+Christoph Jerolimov: noch.
+Marcel Hild: Das ist bei uns auch diese einfach nur spiel Musik ab, macht Licht an und aus und ähm setze irgendwas auf meiner
+Christoph Jerolimov: Ja.
+Marcel Hild: Einkaufsliste.
+Marcel Hild: Aber was ganz gut funktioniert, ist tatsächlich so einem Gespräch folgen.
+Marcel Hild: Ich habe mit ihr besprochen, wie viele Leute in Papua Neugenea wohnen und wie viele Toastbrote sie essen müssten, um 1 Kilo zuzunehmen.
+Marcel Hild: Das hat sie richtig ausgerechnet, aber dann irgendwann ist sie falsch abgebogen.
+Marcel Hild: So, also Widgets, was wird so hier gemacht werden?
+Marcel Hild: Kannst du mir das noch mal in Deutsch
+Christoph Jerolimov: Ja,
+Marcel Hild: erklären?
+Christoph Jerolimov: also wir haben das Backend ist hier konfiguriert und im Backend kann man
+Marcel Hild: Ja.
+Christoph Jerolimov: jetzt sagen welche Widgets welcher Gruppe von User z.B. sehen kann, damit die Homepage unterschiedlich aussieht für unterschiedliche Personen.
+Christoph Jerolimov: Das hat halt Christoph damals in dem Ticket genannt, deswegen heißt das Ticket hier auch Persona.
+Christoph Jerolimov: Ja, du kannst halt sagen hier das Marktone Widget mit einer bestimmten Beschreibung.
+Christoph Jerolimov: Hallo liebe Engineers, sehen nur Leute aus der Gruppe Engineers.
+Christoph Jerolimov: Dann kannst du noch welche für Defops machen.
+Christoph Jerolimov: Also jeder Kunde macht was selber und jeder User sieht ja was anderes auf der Homepage.
+Christoph Jerolimov: Wir haben halt kein Clicky Tool.
+Marcel Hild: Okay,
+Christoph Jerolimov: Wir haben halt leider aktuell nur Jammel und deswegen sieht das so
+Marcel Hild: das ist ja auch gut so, dass wir kein Clicky Tool haben,
+Christoph Jerolimov: aus.
+Marcel Hild: sondern ich mag Jammel und äh dieses die Props, das sind die Component Props, die dann da reingegossen werden, wenn das äh widget die Komponente aufge
+Christoph Jerolimov: exakt gerändert wird.
+Christoph Jerolimov: Ja, so dass du hier quasi,
+Marcel Hild: aufgerändert wird.
+Christoph Jerolimov: wenn die Komponenten generisch genug sind, manche sind natürlich haben gar keine Props, aber jetzt hier z.B. Das Markdown Kart,
+Marcel Hild: Ja,
+Christoph Jerolimov: das kann halt Markdown
+Marcel Hild: okay.
+Marcel Hild: Kurze Frage.
+Christoph Jerolimov: anzeigen.
+Marcel Hild: Haben wir da wird da wird das irgendwie gelintet oder gecheckt, wenn ich da was falsches reinschreibe oder bricht es dann zusammen
+Christoph Jerolimov: Ist eine gute Frage.
+Marcel Hild: oder?
+Christoph Jerolimov: Ähm, ich glaube alles bis zu den Props ist gelintet und der fail und die Props sind definiert als kann alles sein,
+Marcel Hild: Ja.
+Christoph Jerolimov: weil das für jede Komponente unterschiedlich ist und die Komponente selbst könnte
+Marcel Hild: Ja.
+Christoph Jerolimov: das natürlich auch linten quasi.
+Christoph Jerolimov: Also die Eingabe validieren tut sie mit Sicherheit nicht.
+Marcel Hild: Ja, gut.
+Marcel Hild: Ist aber nicht wichtig.
+Marcel Hild: Ja, soll
+Christoph Jerolimov: Also, wenn ich jetzt hier statt äh wenn ich hier die falsche Struktur reinschreibe und Array benutze,
+Marcel Hild: sein.
+Christoph Jerolimov: crasht wahrscheinlich zu 90%.
+Marcel Hild: Okay.
+Marcel Hild: Und dann würdest du jetzt hergehen machst dein
+Christoph Jerolimov: Ich würde ich bin immer noch,
+Marcel Hild: ähm
+Christoph Jerolimov: ich mache ja so oft so eine Mischung, ne?
+Christoph Jerolimov: Ich mache dann mit Cloud und sag dir, mach mal und dann habe ich aber mein Code Editor auf und guck mal und hab das Ergebnis wahrscheinlich im Browser auf.
+Marcel Hild: das ist ja vollkommen in Ordnung.
+Christoph Jerolimov: Ähm
+Marcel Hild: Aber der nächste Schritt wäre jetzt in äh das zu implementieren.
+Marcel Hild: Du gehst dann wohin?
+Christoph Jerolimov: ja, ich hörte dann hier so hier so äh dann
+Marcel Hild: Ähm ah ja, machst du so.
+Marcel Hild: Das ganz viele Christophs.
+Christoph Jerolimov: muss suche ich mir hier das richtige TF aus.
+Christoph Jerolimov: Das hier muss mal kurz gucken, was das hier war.
+Christoph Jerolimov: Das kann man schnell wegtun.
+Christoph Jerolimov: Dann gehen wir auf ähm holen uns mal den letzten Stand. Das hier wurde mittlerweile gemerged.
+00:20:00
+Christoph Jerolimov: Auch ein Homepage Feature.
+Christoph Jerolimov: Das hier, da mache ich normalerweise einmal dort Menütchen und da würde ich anfangen Lust zu implementieren.
+Christoph Jerolimov: Wird mir hier kann ich gleich machen.
+Christoph Jerolimov: Wir Code aufmachen.
+Christoph Jerolimov: Jetzt siehst du ja genau, wie ich
+Marcel Hild: Das ist Ziel und Zweck der
+Christoph Jerolimov: arbeite.
+Marcel Hild: Sa. Jetzt ist der Zeitpunkt, wo du ein bisschen Schluck von der Cola nimmst, ne?
+Marcel Hild: Siehst du?
+Christoph Jerolimov: Mhm.
+Marcel Hild: Okay.
+Marcel Hild: Während das arbeitet äh
+Christoph Jerolimov: So.
+Marcel Hild: ja,
+Christoph Jerolimov: Komm, gib
+Marcel Hild: also seine Tools sind nach wie vor sind Cloud Code und VS
+Christoph Jerolimov: Gas.
+Marcel Hild: Code.
+Christoph Jerolimov: Ja,
+Marcel Hild: Ja.
+Christoph Jerolimov: so wollte ich wahrscheinlich so machen.
+Christoph Jerolimov: Ein bisschen schup schup.
+Christoph Jerolimov: Bisschen Platz.
+Christoph Jerolimov: So und dann weiß nicht, warum jetzt hier so logisch aussieht.
+Christoph Jerolimov: Weg und dann meistens starte ich das Clode einfach hier.
+Christoph Jerolimov: Ich habe auch das Clop Plugin, aber ich würde jetzt normalerweise wahrscheinlich hier dann starten und das
+Marcel Hild: Mm.
+Marcel Hild: Ja,
+Christoph Jerolimov: erstmal gucken.
+Marcel Hild: mach mal.
+Christoph Jerolimov: Mach mal, wie ich das jetzt ähm einfach mal weitermachen.
+Marcel Hild: Ja, einfach mal weitermachen.
+Marcel Hild: Ich find's interessant.
+Christoph Jerolimov: Okay, okay, okay,
+Marcel Hild: Einfach mal
+Christoph Jerolimov: okay.
+Christoph Jerolimov: Würde ich erst noch mal wahrscheinlich gucken, wie es aktuell umgebaut eingesetzt ist.
+Marcel Hild: weitermachen.
+Christoph Jerolimov: Das Problem ist nämlich, dass das neue Frontsystem eingebaut worden ist.
+Christoph Jerolimov: wurden wurde Code dupliziert.
+Christoph Jerolimov: Ähm ja,
+Marcel Hild: Natürlich.
+Christoph Jerolimov: leider nicht.
+Christoph Jerolimov: Hoffentlich nicht natürlich, aber muss das nicht grau sein.
+Marcel Hild: Also der das VS Code Status wird auch immer in dem Workspace gestartet, nicht im Root von RSDH Plugins.
+Christoph Jerolimov: Das das machen andere anders.
+Marcel Hild: Ist das auch äh
+Christoph Jerolimov: Ich mache das so.
+Christoph Jerolimov: Dann kann ich dir auf jeden Fall sagen, dass ich das auch schon anders gesehen habe und viele Leute auch sagen,
+Marcel Hild: Okay,
+Christoph Jerolimov: nee, die finden das cooler, dann haben sie können sie schneller Code hin und her kopieren.
+Christoph Jerolimov: Ja, ich me ich starte immer das Clot nur in meinem Workspace.
+Marcel Hild: ja.
+Marcel Hild: So, muss wir
+Christoph Jerolimov: Ähm, so, jetzt mus einmal verstehen, wie das aktuell funktioniert.
+Christoph Jerolimov: Nein,
+Marcel Hild: gern.
+Christoph Jerolimov: nein, nein, nein, nein, nein.
+Christoph Jerolimov: Äh, durchgestrichen.
+Christoph Jerolimov: Ich jetzt schon irgendwas nicht richtig.
+Christoph Jerolimov: Okay.
+Christoph Jerolimov: Factory Custom Layout.
+Christoph Jerolimov: Wahrscheinlich ehrlich gesagt würde ich jetzt mehr von Hand auch verschieben,
+Marcel Hild: Okay, dann ähm
+Christoph Jerolimov: weil das hier aber ich würde mir jetzt wahrscheinlich gleich sagen,
+Marcel Hild: M.
+Christoph Jerolimov: dass das bisschen verstehen, dass er das hier extrahieren soll mal in eigene in eine eigene Components und dass er dann im Prinzip, wenn ich hard wäre, würde ich sagen, schmeiß das hier weg.
+Christoph Jerolimov: und machen API Call auf das Backend ähnlich
+Marcel Hild: Ja.
+Christoph Jerolimov: zu bze bzw. Benutze benutze ein Hook.
+Christoph Jerolimov: Was ist das?
+Marcel Hild: Okay, dann mal kurz stopp.
+Christoph Jerolimov: Ja, ja,
+Marcel Hild: Set jetzt setze ich mich ist
+Christoph Jerolimov: ja.
+Marcel Hild: ähm wenn du jetzt clot da auf rufst, ruf mal auf.
+Christoph Jerolimov: Ach so, warte, wollen wir Futzen oder wollen wir Red benutzen?
+Marcel Hild: Das ist äh wir wollen auf jeden Fall Redhead benutzen.
+Marcel Hild: So geht das. Okay, dann jetzt noch mal.
+Christoph Jerolimov: Dann wird er jetzt auch
+Marcel Hild: Ja, ich ich sag mal slash Model Opus.
+Marcel Hild: Das geht ja ohne
+Christoph Jerolimov: das funktioniert auch ohne Version.
+Marcel Hild: Version nimmt einfach das äh verfügbare Obus.
+00:25:00
+Marcel Hild: Genau.
+Christoph Jerolimov: Gut.
+Marcel Hild: Und äh wenn du ein der ein Millionen Kontext ist nur bei Son, deswegen schreibe ich dann immer Model Opus eckige Klammer auf 1M eckige Klammer zu.
+Marcel Hild: Ja, schreib mal.
+Marcel Hild: Oder ist nur eingefroren?
+Christoph Jerolimov: Habe ich ist
+Marcel Hild: Na, jetzt ein bisschen lagy, siehst du?
+Marcel Hild: Und dann äh ach guck mal,
+Christoph Jerolimov: eingefroren.
+Marcel Hild: gibt's jetzt neue Dings, sonst ist er dann immer auf Songeschwenkt.
+Marcel Hild: Ähm, genau.
+Marcel Hild: Dann machen wir Slashrhdh.
+Marcel Hild: Welche Skills hast du jetzt installiert?
+Christoph Jerolimov: Peinlich wahrscheinlich.
+Marcel Hild: Ja, ne, ist do gut.
+Marcel Hild: Da ist do der RHDH Skill,
+Christoph Jerolimov: Ja,
+Marcel Hild: ne?
+Christoph Jerolimov: was macht
+Marcel Hild: Jetzt ändern drückst.
+Marcel Hild: Ma mal.
+Marcel Hild: Ja, mach mal.
+Christoph Jerolimov: er?
+Marcel Hild: Super, der existiert.
+Marcel Hild: Also toll.
+Marcel Hild: Ähm, die Sessions werden äh ja in im Home gespeiert unter Claud.
+Marcel Hild: Das heißt, da geht nichts verloren.
+Marcel Hild: Sind wir jetzt mal bei der was wir als äh Assets da produzieren.
+Marcel Hild: Ähm, also ich mach das jetzt auch adok, ne?
+Marcel Hild: das jetzt nichts, was ich vorbereitet habe.
+Marcel Hild: Ähm, ich glaube, wenn du jetzt alles in diesem Homepage Gram
+Christoph Jerolimov: อือ
+Marcel Hild: ähm heute über das Cloud machst, also du fasst bitte nichts im Editor an, also kopierst nichts rum und tippst auch nicht selber ein, sondern du sprichst wirklich nur mit dem Ding.
+Marcel Hild: Ja, das ist äh im Prinzip im Prinzip sowas wie eine Challenge, was wie geh mit verbundenen Augen ein Eisessen wird sehr lustig.
+Marcel Hild: Man muss sich dann halt dran halten, auch wenn das manchmal ja, dann ma ich da da einfach weg ma ich das aber das versuchen wir zu machen.
+Christoph Jerolimov: Ja.
+Christoph Jerolimov: Ja, das ist
+Marcel Hild: Ja, dann versuchen wir starten wir das Ganze von vorne so wie wir da jetzt durchgegangen sind.
+Christoph Jerolimov: okay.
+Marcel Hild: Du sagst ihm äh wir wollen heute diese Story implementieren.
+Marcel Hild: Schau dir das Epic und schau dir das dazugehörige Feature an.
+Marcel Hild: Dann wechseln wir in den Planmodus und generieren einen Plan.
+Christoph Jerolimov: Also, Moment.
+Marcel Hild: Ja.
+Christoph Jerolimov: Wir machen jetzt heute mache ich die Chat Variante und morgen versuchen wir es noch mal zu sagen mit dann gucken wir uns den Chat an,
+Marcel Hild: Nee, du machst die Chatvariante und kriegst das heute dann hoffentlich fertig und dann haben wir aber das
+Christoph Jerolimov: ne?
+Marcel Hild: gecaptured, wie du das heute fertig bekommen hast und ich kann mir dann angucken oder wir können zusammen angucken, was du da gemacht hast und wo man Room for Improvement hat und vielleicht ist es auch nicht gut.
+Christoph Jerolimov: Mhm.
+Marcel Hild: Deswegen ähm so wie ich mir das jetzt gerade adok überlege, wir sind immer im Chat, wir sagen eben, das hier sind unsere das ist unsere Story.
+Marcel Hild: Der greift auf Sheira zu, guckt sich das an,
+Christoph Jerolimov: Aber würdest du das heute schon machen,
+Marcel Hild: dann soll er bitteschön ein Plan kannst du ja
+Christoph Jerolimov: dass ich ihm sage, guck dir mal das Ja,
+Marcel Hild: jetzt schon sagen.
+Marcel Hild: Sagen wir das doch mal der wie past
+Christoph Jerolimov: wie soll ich denn das denn?
+Marcel Hild: rein
+Christoph Jerolimov: einfach reintesten.
+Christoph Jerolimov: nichts
+Marcel Hild: einfach reinpasten, aber noch nicht schon was sagen und dann Freizeichen natürlich.
+Christoph Jerolimov: sagen.
+Marcel Hild: Wir sind auf Englisch, würde ich sagen.
+Marcel Hild: Ähm hast du sowas wie äh Voice to text?
+Christoph Jerolimov: Nee,
+Marcel Hild: Das ist das nächste, was du dir glaube ich noch installieren möchtest,
+Christoph Jerolimov: ich glaube,
+Marcel Hild: aber egal.
+Christoph Jerolimov: das gibt's in der UI Variante.
+Christoph Jerolimov: Kann ich gleich
+Marcel Hild: Ja, guck gucken wir gleich noch ein anderes äh Tool.
+Christoph Jerolimov: mal
+Marcel Hild: Äh Handy heißt das. Das installierst du dir.
+Marcel Hild: Dann bist du auf macOS unterwegs oder auf Linux.
+Christoph Jerolimov: Nee, ich bin auf L unterwegs.
+Marcel Hild: Das ist auch gut.
+Marcel Hild: Das ist ja toll.
+Marcel Hild: ähm sag use the
+Christoph Jerolimov: zu
+Marcel Hild: skill to read the this story and traverse up to the feature.
+Christoph Jerolimov: ich noch in Plan switchen?
+Marcel Hild: Feuer werden also wir gucken erstmal ACLI.
+Marcel Hild: Hast du das ACLI mittlerweile geschnabbelt?
+00:30:00
+Christoph Jerolimov: Das müsste laufen.
+Christoph Jerolimov: Ich hoffe, ich habe auch diese Datei an die richtige Stelle gelegt.
+Marcel Hild: Okay.
+Marcel Hild: Ähm,
+Christoph Jerolimov: Sieht nicht so aus, ne?
+Marcel Hild: sieht nicht so aus.
+Marcel Hild: Guck mal, ob du mit AC
+Christoph Jerolimov: Also mein er das müss ohne das der Fnall eigentlich natürlich.
+Christoph Jerolimov: Ja, das geht.
+Marcel Hild: geht.
+Christoph Jerolimov: Ich habe das aber ich weiß, dass wir das dies daneben legen müssen, ne?
+Christoph Jerolimov: dieses hier äh suchen.
+Marcel Hild: Nee, warte mal.
+Marcel Hild: Das müsste, das würde brauchst nichts daneben das ist gut.
+Marcel Hild: Ähm, ACLI passt.
+Marcel Hild: Ich glaube, dein Skill ist noch nicht richtig.
+Marcel Hild: Geh noch mal zurück in den hier.
+Christoph Jerolimov: H
+Marcel Hild: Ähm, frag ihn mal, welche Version vom RHDH Skill das sei.
+Marcel Hild: He.
+Christoph Jerolimov: Wir sind noch gar nicht bei 10 oder
+Marcel Hild: Äh, nee, dann genau.
+Christoph Jerolimov: sind bei 0.7 7 oder so.
+Christoph Jerolimov: Das äh ja,
+Marcel Hild: Geh geh mal raus aus dieser Session.
+Christoph Jerolimov: ich habe hier eine zweite Browser äh Termin Clode Skills.
+Marcel Hild: Nee, nee, nee, nee, nee.
+Marcel Hild: So, so schnell waren wir es gar nicht.
+Marcel Hild: Ähm, gehen wir wieder zurück in dieses Homepage Dingel.
+Marcel Hild: C- So, dann machen wir clot plugin List.
+Marcel Hild: Cloud Marketplace Cloud Plugin Marketplace List.
+Christoph Jerolimov: Plugin Marketplace List.
+Marcel Hild: Ja, ist nur
+Christoph Jerolimov: Ja,
+Marcel Hild: der.
+Christoph Jerolimov: wahrscheinlich habe ich das lokal.
+Christoph Jerolimov: Deswegen wollte ich gerade gucken, wo es gesümlinkt ist.
+Christoph Jerolimov: Ich dachte, ich hätte das vielleicht lokal
+Marcel Hild: Ja, dann machst du es vielleicht mit dem NPX.
+Christoph Jerolimov: einfach
+Marcel Hild: Dann geh noch mal auf mit deinem Browser in unser RH Skills rein mit dem ne
+Christoph Jerolimov: rein.
+Christoph Jerolimov: Also,
+Marcel Hild: Browser.
+Christoph Jerolimov: okay.
+Marcel Hild: Lass mal einfach da in diesem Homepage verzeichnis bleiben mit seinem Webbrowser
+Christoph Jerolimov: Browser.
+Marcel Hild: in Ich bin auf dieses NPX Skills umgestiegen.
+Marcel Hild: Das ist viel besser.
+Christoph Jerolimov: Soll ich einfach
+Marcel Hild: Ja, mach das
+Christoph Jerolimov: mal
+Marcel Hild: mal.
+Marcel Hild: Ah, ma wir mal Steuerung C.
+Christoph Jerolimov: echt?
+Marcel Hild: Entschuldigung, dann gehen mal zwei hoch, weil da ist ja oder machen mal ja, da ist ja kein Claus drin.
+Marcel Hild: Dann machst du da mal ein LS- A, ob dann oder ob da ein Punkt Clouds drin ist.
+Marcel Hild: Da ist ein Punkt Cursor und ein Punkt Cloud.
+Marcel Hild: Was ist da drin?
+Christoph Jerolimov: Ja,
+Marcel Hild: Nur Settings.
+Marcel Hild: Was steht da drin?
+Marcel Hild: Das ist gut.
+Marcel Hild: Okay, dann mach da jetzt mal dieses NPX Geraffel.
+Christoph Jerolimov: aber ich würde das schon global installieren.
+Christoph Jerolimov: Das wäre für mich
+Marcel Hild: Ja, okay.
+Marcel Hild: Dann machst du - G da hinten dran.
+Christoph Jerolimov: schon
+Marcel Hild: Machst du Steuung Steuerung C,
+Christoph Jerolimov: ist das nicht äh Repository klar.
+Marcel Hild: ne?
+Marcel Hild: Muss mit -
+Christoph Jerolimov: Würde er mich nicht gleich
+Marcel Hild: G. Ich glaube,
+Christoph Jerolimov: fragen?
+Marcel Hild: also ich weiß nicht, ob er dich fragt.
+Marcel Hild: Ich glaube, er fragt einen nicht, aber vielleicht auch doch.
+Marcel Hild: Ich habe wirklich einfach alle ausgewählt mit ja mit
+Christoph Jerolimov: Ich bin auch überrascht.
+Christoph Jerolimov: Wie mache ich denn
+Marcel Hild: Space einfach durchtoggeln
+Christoph Jerolimov: alle?
+Marcel Hild: alle.
+Marcel Hild: Okay, enter.
+Marcel Hild: So, das ist auch gut.
+Marcel Hild: Jetzt hat er nämlich Claud und die ganzen anderen und dann sagt er, welche gut sind, welche schlecht sind.
+Marcel Hild: So und wo hat er die jetzt hin kopiert?
+Marcel Hild: In Home Agent Skills und dann hat er sie gesimlinkt.
+Christoph Jerolimov: den Haverzeichnis Agents, aber er hat sie ja.
+Marcel Hild: Okay, gut.
+Marcel Hild: Lass mal versuchen.
+Christoph Jerolimov: Wie geht das mal Reload?
+Marcel Hild: Glaub ja Reload Skills und dann so noch mal
+Christoph Jerolimov: Ein noch mal versuchen
+Marcel Hild: slash.
+Marcel Hild: Nee, nee, ma mal noch mal Escape.
+Christoph Jerolimov: oder
+Marcel Hild: Dann sagt mal slash rhdh setup rhdh skill, ne?
+Marcel Hild: Einfach nur Setup HDH skill.
+00:35:00
+Christoph Jerolimov: ohne das den Befehl meinst du?
+Marcel Hild: Ja, genau.
+Marcel Hild: Ja, ne auch Schmitzle.
+Marcel Hild: Ja, oder so.
+Marcel Hild: Ist auch egal.
+Marcel Hild: Jetzt kriegen die schon ganz gut
+Christoph Jerolimov: Ох.
+Marcel Hild: hin.
+Christoph Jerolimov: Ja, ich habe da ich fand das
+Marcel Hild: Ja, was?
+Christoph Jerolimov: ich fand es nicht so schön tatsächlich, dass der also der sagt, der will da so eine spezifische Datei im Verzeichnis haben.
+Christoph Jerolimov: Zumindestens habe ich das gestern so aus.
+Marcel Hild: Das fand's nicht schön.
+Christoph Jerolimov: Nö,
+Marcel Hild: Also
+Christoph Jerolimov: wenn ich ACI lokal benutzen kann,
+Marcel Hild: die
+Christoph Jerolimov: würde ich einfach sagen, das muss ja wohl reichen bei dem
+Marcel Hild: was wo bist du jetzt bei dem unserem Rage Skill?
+Christoph Jerolimov: Atlas bei dem Atlas CLI.
+Marcel Hild: Genau,
+Christoph Jerolimov: Das hat ja, das hat ja funktioniert,
+Marcel Hild: das ist ja auch so.
+Christoph Jerolimov: aber der hat trotzdem nicht richtig benutzen können.
+Marcel Hild: Genau, das wollen wir jetzt gerade so hinbekommen, dass das nicht in deinem in deiner Lernkurve drin steckt, wie man mit dem zum Direr zugreift, sondern das ist soll ja über die Skills eben äh gemacht werden.
+Marcel Hild: So, was sagt er jetzt?
+Marcel Hild: ist all setup all core checks pass.
+Marcel Hild: Dann frag ihn mal, wo denn deine RHDH spezifischen Repository sind.
+Christoph Jerolimov: H
+Marcel Hild: Wer ist mein AGH specific Repositories?
+Christoph Jerolimov: Verstehe die Fragen schon
+Marcel Hild: Ja, dann werden wir jetzt gleich sehen.
+Marcel Hild: Guck mal,
+Christoph Jerolimov: nicht.
+Marcel Hild: er weiß nämlich jetzt, wo deine Rebos sind.
+Marcel Hild: RJ Plugins befindet sich da ist das und so weiter.
+Christoph Jerolimov: Das korrekt.
+Marcel Hild: Ist das alles korrekt?
+Christoph Jerolimov: Das ist korrekt.
+Marcel Hild: Super, weil manchmal haben wir so Reproübergreifende Sachen.
+Marcel Hild: Gut, dann äh help me configure Gra access with ACL I.
+Christoph Jerolimov: noch mal nachschlagen.
+Marcel Hild: Du jetzt s willst du dich authentifizieren,
+Christoph Jerolimov: Soll ich das jetzt hier im
+Marcel Hild: aber das ich würde es äh in Ja,
+Christoph Jerolimov: Brows
+Marcel Hild: wir können das ja mal machen und dann können wir auch so gleich diesen Brow diesen äh Cira Skill verbessern, weil das nämlich wahrscheinlich gar nicht.
+Marcel Hild: Es geht ein Browser auf.
+Christoph Jerolimov: Ich dachte Das nämlich funktioniert nicht.
+Marcel Hild: Das dachte ich eigentlich auch.
+Christoph Jerolimov: Das funktioniert nämlich nicht.
+Christoph Jerolimov: Das ja das,
+Marcel Hild: Okay, dann genau,
+Christoph Jerolimov: warum ich gestern gestockt habe.
+Marcel Hild: dann sagst richtig super.
+Marcel Hild: Dann steuung C in der Escape.
+Christoph Jerolimov: Ja.
+Marcel Hild: So, sag this doesn't work.
+Marcel Hild: We need to authenticate with a token.
+Marcel Hild: Man muss auch übrigens nicht grammatikalisch korrekt schreiben.
+Marcel Hild: Die sind ganz gut daran.
+Christoph Jerolimov: อ
+Marcel Hild: Torsten scheint zu.
+Christoph Jerolimov: Ja, das ist halbwegs korrekt.
+Christoph Jerolimov: Äh prom du bist
+Marcel Hild: So, kannst ja jetzt einfach in der Schelder machen.
+Christoph Jerolimov: okay.
+Marcel Hild: Genauso.
+Marcel Hild: Hast dein Token irgendwo?
+Christoph Jerolimov: Wo habe ich den das hingelegt?
+Christoph Jerolimov: Es gibt's ja auf jeden Fall habe ich den gestern hingelegt gibt's auf jeden Fall hier.
+Christoph Jerolimov: Ups.
+Marcel Hild: Super, dann kannst du das ja machen.
+Marcel Hild: Wer das Ding
+Christoph Jerolimov: Gira Token.
+Christoph Jerolimov: Dann muss ich einmal kurz Wie war
+Marcel Hild: oder den ist auch
+Christoph Jerolimov: das?
+Marcel Hild: egal,
+Christoph Jerolimov: Token DXD.
+Christoph Jerolimov: Es ist ein bisschen anderes Format.
+Marcel Hild: glaube ich nicht.
+Christoph Jerolimov: Denk er jetzt
+Marcel Hild: Ja.
+Marcel Hild: Ah, okay.
+Christoph Jerolimov: so
+00:40:00
+Marcel Hild: Kopier do alles.
+Marcel Hild: Ach so, ich würde das jetzt Ja, okay, ist gut.
+Marcel Hild: Na ist gut.
+Christoph Jerolimov: Wo ist mein Fehler?
+Marcel Hild: Weiß ich nicht.
+Marcel Hild: Ne, ist kein Fehler.
+Marcel Hild: Nee, nee, ich hätte es nur in der Shell gemacht, aber so ist ja noch besser.
+Marcel Hild: Ich glaube, wir Freizeichens davor.
+Marcel Hild: Ja.
+Christoph Jerolimov: Okay, weil er hatte ich habe br gedrückt hat einfach nichts gemacht.
+Christoph Jerolimov: Du siehst ja nicht, dass ich schon dreimal gedrückt hatte, deswegen.
+Marcel Hild: Ja.
+Christoph Jerolimov: Yay.
+Christoph Jerolimov: Muss man aber auch erstmal wissen, dass man dem sagen muss.
+Christoph Jerolimov: Bitte helf mir beim Setup.
+Marcel Hild: Dies mal, das sind schon unsere lessons Learns.
+Marcel Hild: werden wir dann hier unsere schönes Transkript über die Claud Session drüber legen und dann probieren wir so ein Onboarding mit anderen Leuten irgendwann.
+Marcel Hild: So, das erste Full Hierarchie passt auch, ne?
+Christoph Jerolimov: Ja, das ist total
+Marcel Hild: Okay, dann sag jetzt wäre mein nächster Schritt zu sagen,
+Christoph Jerolimov: korrekt.
+Marcel Hild: ähm lass mal in den Planungsmodus übergehen und für diese Story einen Plan erstellen.
+Christoph Jerolimov: Ich
+Marcel Hild: Der Plan soll auch Teil des Pull Requests sein, weil ich glaube, dein Work Item ist doch, dass du diese Story in einem PR machst, oder?
+Marcel Hild: Ja, genau.
+Marcel Hild: Äh, der Plan soll auch Teil des Pull Requests äh sein.
+Marcel Hild: Also bitte hier im Repository ablegen und schon früh einen Draft PR aufmachen.
+Christoph Jerolimov: Soll ich mal schreiben?
+Marcel Hild: Nee, warte mal.
+Marcel Hild: Ist ist das Würdest du da dem ähm zustimmen?
+Marcel Hild: Also, dann kann man nämlich äh relativ häufig schickt man was auf GitHub rauf mit dem Draft PR, dann hat er zeugt ein bisschen Visibilität, kann er dann immer noch später rebasen und squashen und der ganzen Shit.
+Marcel Hild: ähm für das Team und
+Christoph Jerolimov: Visibilität für was jetzt?
+Marcel Hild: für äh Teams mit anderen äh Menschen.
+Christoph Jerolimov: Ne, also bräuchte ich jetzt, also ich glaube nicht, dass jemand das interessiert,
+Marcel Hild: Nee, neö, aber äh ja,
+Christoph Jerolimov: was das was ich das etwas in Arbeit ist,
+Marcel Hild: okay.
+Marcel Hild: Ja, aber dich stört's nicht.
+Christoph Jerolimov: ne?
+Christoph Jerolimov: mich stürz nicht, aber deswegen frage ich ja,
+Marcel Hild: Gut,
+Christoph Jerolimov: warum
+Marcel Hild: ich ich glaube ich glaube, weil das später Leute interessieren sollte oder zumindest Agenten interessieren sollte,
+Christoph Jerolimov: ähm
+Marcel Hild: dann kann ich nämlich genau sehen, okay, der arbeitet jetzt da dran und der ist schon so weit.
+Marcel Hild: Ist aber auch egal, ne?
+Marcel Hild: Aber das ich würd es je mehr wir nach je mehr Transparenz wir haben, umso besser ist es, glaube ich.
+Marcel Hild: Und zweitens was?
+Christoph Jerolimov: würdest würdest du den Planungsmodus jetzt gehen?
+Marcel Hild: Ja, genau.
+Marcel Hild: Warte mal kurz.
+Marcel Hild: Ähm und dann ähm iterieren iterierst
+Christoph Jerolimov: Oh.
+Marcel Hild: du so lange auf diesem Planmodus ähm bis du der Meinung bist, okay, genauso stelle ich mir das vor.
+Marcel Hild: Da gehe ich bin ich da kor und dann lassen wir ihn das implementieren.
+Christoph Jerolimov: Aber solange ich in dem Planungsmodus bin, erzeugt er doch auch keine Markdown Datei über seinen Plan, oder?
+Marcel Hild: Doch, genau.
+Marcel Hild: Das ist ja der äh der erzeugt die schon, aber je nachdem in welcher Cloud Version man ist.
+Marcel Hild: Früher hat er das immer im Verzeichnis abgelegt, dann hat er das in Home Verzeichnis irgendwo versteckt abgelegt.
+Marcel Hild: Äh, das verändert sich ja auch ständig.
+Marcel Hild: Ich glaube, dass dieses Planen wollen wir sowieso auch noch unsere eigene Arzt zu planen finden, aber jetzt für unsere ersten Schritte würde ich einfach mit einem Mark anfangen, weil es am einfachsten ist.
+Marcel Hild: Später machen wir vielleicht mit diesem Open Speck irgendwas oder planen.
+Christoph Jerolimov: Nee,
+Marcel Hild: Die Pläne werden ins Feature zurückgeschrieben oder so oder so.
+Marcel Hild: Ja.
+Christoph Jerolimov: Mhm.
+Christoph Jerolimov: Aber noch mal jetzt sorry ähm wenn ich jetzt in den
+Marcel Hild: Mm.
+Christoph Jerolimov: Planungsmodus switche, dachte ich, macht er das alles nur so im Kontext und klar, vielleicht persistiert er es irgendwo, aber das ist ja dann im Gitgnore im Cloud Ordner oder so.
+Christoph Jerolimov: Soll ich dann jetzt in dem Edit Modus bleiben und ihm sagen, erstell einen Plan in einer Markdown Datei?
+Marcel Hild: Ja, nein, ist aber auch äh auf Fine Tuning.
+Marcel Hild: Ich würde jetzt in unserem spezifischen Fall würde ich äh Ja, genau.
+Marcel Hild: Sag sag ich hier ähm oder ich schreib mal mit.
+00:45:00
+Marcel Hild: Ich äh äh dings hier äh oder warte,
+Christoph Jerolimov: Aber sag vorher,
+Marcel Hild: ich sag noch was, was ich was ich sage.
+Marcel Hild: Ich würde ich würde sagen ähm erstelle äh let let's create a plan file to implement the story.
+Marcel Hild: Plan file has to be in this repository because it has to be a part of the draft PR which we will create afterwards.
+Christoph Jerolimov: Dann bleibe ich einfach im Edit Modus oder?
+Marcel Hild: J geh vielleicht auch in Planmodus ist auch das ist auch egal eigentlich.
+Christoph Jerolimov: Okay.
+Marcel Hild: Also Hauptsache stell den scheiß Plan.
+Christoph Jerolimov: Ähm, so,
+Marcel Hild: Er weiß das schon.
+Christoph Jerolimov: ich würde ihm schon gleich Okay,
+Marcel Hild: Kannst du kannst ja kannst ja sagen, vor the story,
+Christoph Jerolimov: das war ich wollte gerade fragen, weil also ich würde Ihnen jetzt noch eine Menge mitgeben, wie ich es gerne implementiert haben möchte.
+Marcel Hild: das machst du ja in den Planungsmodus als äh Dialog.
+Marcel Hild: War schon gut.
+Marcel Hild: Create plan file for the story which has to be in this repository because we want to add it to the full requests.
+Christoph Jerolimov: included in die request later.
+Christoph Jerolimov: Ähm Ah, ich könnte mal ganz kurz muss mal ganz kurz ein Branch aufmachen.
+Marcel Hild: Nee, das machst machst du auch bitte nicht.
+Marcel Hild: Wir machen wirklich alles in dem Dings, wenn du ein Branch aufmachen musst,
+Christoph Jerolimov: Okay.
+Marcel Hild: dann muss das jetzt noch kannst du noch schreiben oder kannst du mir später auch sagen.
+Christoph Jerolimov: Br story story.
+Marcel Hild: Нча
+Christoph Jerolimov: F oder included in start draft request
+Christoph Jerolimov: immediately push changes.
+Christoph Jerolimov: Ich weiß das immigiere ich jetzt nicht,
+Marcel Hild: ist.
+Marcel Hild: Nein,
+Christoph Jerolimov: weil das ist ein schwieriges Wort.
+Marcel Hild: du musst sowieso gar nichts korrigieren.
+Marcel Hild: Das muss man sich auch erstmal
+Christoph Jerolimov: PR push changes to the
+Marcel Hild: angewöhnen.
+Christoph Jerolimov: after any changes directly.
+Christoph Jerolimov: Okay,
+Marcel Hild: Mhm.
+Christoph Jerolimov: dann gehe ich aus Planungsmodus raus, weil das ja quatsch, soll das ja jetzt tun,
+Marcel Hild: Ja,
+Christoph Jerolimov: ne?
+Marcel Hild: also der Planmodus und der andere Modus unterscheiden sich auch nicht wirklich, nur dass den Planmodus halt nur Markter und Fils anfassen darf.
+Marcel Hild: Ja, so.
+Marcel Hild: Also eben hatten wir schon so, wo ich hier kurz auf die Finger hauen musste im sprichwörtlichen Sinne, also wirklich auch so ganz einfache sein, ich mache mal ein Branch oder so, das wollen wir gerade automatisieren.
+Marcel Hild: Also es ist wirklich so, dass deine Aufgabe heute ist so wie bei dieser Challenge I will not click in the editor only for few reasons, for viewing pleasures.
+Marcel Hild: Und I will not execute any shell commands in my shell.
+Marcel Hild: which are related to this hier.
+Christoph Jerolimov: auf.
+Marcel Hild: So, dann geh noch mal auf
+Christoph Jerolimov: Okay.
+Marcel Hild: Das ist es.
+Marcel Hild: Handycuter.
+Marcel Hild: Ja, habe ich auch noch nicht gesehen.
+Marcel Hild: Ist geil.
+Marcel Hild: So, das äh installierst du dir bitte.
+Christoph Jerolimov: Ist
+Marcel Hild: Das ist ein äh Wispermodell und die hab haben glaube ich auch noch andere äh Modelle.
+00:50:00
+Marcel Hild: Das läuft dann lokal ganz
+Christoph Jerolimov: das das?
+Marcel Hild: einfach bitte.
+Christoph Jerolimov: Äh ja, was darf nicht?
+Marcel Hild: Ja, das läuft lokal.
+Marcel Hild: Du kannst einfach dann, also kannst eine Taste halten, dann sprichst du da rein und dann wird die Transcription in dein Textfeld, wo du gerade deinen Fokus hast, reingepostet.
+Marcel Hild: Da musst du nämlich nichts mehr tippen, sondern du sagst ihm das
+Christoph Jerolimov: Ja, ich will mal ganz kurz gucken.
+Marcel Hild: einfach.
+Christoph Jerolimov: Ich meine, ich habe das installiert, aber dann irgendwie doch bleibt man dann doch immer bei dem,
+Marcel Hild: Ja,
+Christoph Jerolimov: was man so kennt.
+Marcel Hild: da ist dieser Voice Button
+Christoph Jerolimov: Hello, my name ist Christoph.
+Marcel Hild: da.
+Christoph Jerolimov: How are you?
+Christoph Jerolimov: Es würde zumindestens gehen, aber ich kann es ja trotzdem ausprobieren.
+Marcel Hild: Ja, kannst du probieren da.
+Christoph Jerolimov: Das ist dann in funktioniert dann halt
+Marcel Hild: Entschuldigung.
+Christoph Jerolimov: überall, meinst
+Marcel Hild: Genau.
+Christoph Jerolimov: du?
+Marcel Hild: Also willst es ja nicht nur im Cloud haben, sondern willst es ja eigentlich überall haben.
+Marcel Hild: Jedenfalls geht's mir so.
+Marcel Hild: Also ja, ist echt ein bisschen Gewöhnung.
+Marcel Hild: Ich habe muss auch einige andere Leute schon davon überzeugen, weil es fühlt sich echt weird an äh mit dem Computer zu sprechen und gerade wenn noch jemand anderes im Raum ist, mache ich das immer noch nicht.
+Marcel Hild: Ähm, aber wenn du da alleine sitzt, äh wird's immer besser.
+Marcel Hild: So, geht das.
+Christoph Jerolimov: GL das einfach ein
+Marcel Hild: Dann startet man das.
+Christoph Jerolimov: Binary.
+Marcel Hild: Krass.
+Christoph Jerolimov: Äh was wird das?
+Marcel Hild: Okay.
+Christoph Jerolimov: Sind das
+Marcel Hild: Ach so, das sind das sind die verschiedenen Modelle.
+Christoph Jerolimov: Models?
+Marcel Hild: Da willst du eins haben, was äh ähm ich weiß jetzt nicht, wie fett dein Rechner ist.
+Marcel Hild: Äh wenn du nur Englisch sprichst, äh reicht auch da oben so ein äh das Paraket, das ist von Nvidia.
+Marcel Hild: Das ist ziemlich schnell, aber kann halt auch nur Englisch.
+Marcel Hild: Ich habe so ein Ich hab Ja,
+Christoph Jerolimov: Das reicht ja eigentlich auf der Arbeit.
+Marcel Hild: dann machst du das. Kannst auch die kannst du auch später noch aus äh
+Christoph Jerolimov: Ich habe eher ich habe eher ein anderes peinliches Problem.
+Marcel Hild: umändern.
+Christoph Jerolimov: Mein Rechner hat viel Power.
+Christoph Jerolimov: Mein Rechner ist allerdings festplattenmäßig an einem Limit.
+Marcel Hild: Ja.
+Christoph Jerolimov: Ähm, ich hatte letztens mal irgendwie auch ein anderes äh AI Studio oder so runtergeladen und dann irgendwie versehentlich zwei, drei Models angeklickt, die die waren deutlich größer als die hier.
+Marcel Hild: Ja,
+Christoph Jerolimov: Und dann war meine Platte mal wieder voll.
+Marcel Hild: kannst kannst ja irgend deinem Cloud sagen,
+Christoph Jerolimov: wieder voll.
+Christoph Jerolimov: Ich muss irgendwann mal ein bisschen bisschen Sachen
+Marcel Hild: soll mal aufräumen.
+Marcel Hild: Gut,
+Christoph Jerolimov: verschieben.
+Marcel Hild: dann gehen noch mal in den in den vs Codes zurück.
+Christoph Jerolimov: Äh den hier.
+Marcel Hild: So, da muss du natürlich jetzt mal ja ja ja machen,
+Christoph Jerolimov: Ja.
+Marcel Hild: ne?
+Marcel Hild: So,
+Christoph Jerolimov: Ich lass
+Marcel Hild: und jetzt kannst du dir das ja schon mal angucken, das
+Christoph Jerolimov: ihn das auch direkt kommitten,
+Marcel Hild: Fall.
+Christoph Jerolimov: aber ich suche es noch kurz.
+Christoph Jerolimov: Das war hier irgendwo ein L MD.
+Christoph Jerolimov: Nee, das war nicht.
+Christoph Jerolimov: Ach, sorry, ich habe hier irgendwie ich muss zu machen.
+Christoph Jerolimov: Ja, so.
+Christoph Jerolimov: Wo war die Datei?
+Christoph Jerolimov: Fre Homepage Plan, glaube ich.
+Christoph Jerolimov: Ja, sieht do besser aus als erwartet.
+Marcel Hild: Genau.
+Marcel Hild: Das äh so.
+Marcel Hild: Ja, warte mal, bevor du das durchliest.
+Marcel Hild: Wo ist der die Cloud Session?
+Marcel Hild: Ist er schon fertig?
+Christoph Jerolimov: F natürlich wieder 1000 Sachen.
+Marcel Hild: Mach mal Shift Tab.
+Christoph Jerolimov: Was hier?
+Marcel Hild: Ja, dann cycelst du durch die Modi durch.
+Marcel Hild: Dann gibst du ihm einfach mal noch einmal Shift Tab ein bisschen Achso,
+Christoph Jerolimov: Да.
+Marcel Hild: der ist stimmt, das hast ja gar nicht mit dangerously äh skip permissions Tralala gemacht.
+Marcel Hild: Ich bin immer im Yolo Mode, aber das wirst du ja auch noch irgendwann vielleicht äh machen.
+Marcel Hild: So. Ziel hier ist auch wieder nicht diesen Plan anzufassen.
+Marcel Hild: Ach so, jetzt noch mal.
+Marcel Hild: Äh, der Draft PR ist schon offen.
+Marcel Hild: 3700. Dann gucke ich mir den mal an,
+Christoph Jerolimov: Mhm.
+Marcel Hild: ob das schon da drin ist.
+Marcel Hild: Plugins requests.
+00:55:00
+Marcel Hild: Da ist er.
+Marcel Hild: Do not merge.
+Marcel Hild: Work in progress ist drin.
+Marcel Hild: Super.
+Marcel Hild: Fils changed.
+Marcel Hild: The plan ist da.
+Marcel Hild: Toll.
+Marcel Hild: D können wir uns nämlich auch ansehen, wie der Plan über die äh Jahre evolutioniert ist, weil wir später vielleicht, wenn wir dann wirklich in so einer Fullsend Nummer drin sind, gucken wir uns diesen Plan an, machen davon Review und geben dann Feedback zu dem Agent,
+Marcel Hild: was da dran schlecht ist an den Plan.
+Christoph Jerolimov: Mhm.
+Marcel Hild: So, und jetzt gehst du her, liest den durch.
+Marcel Hild: Das ist wiederum jetzt äh deine Präferenz, wie du ihm da Feedback geben möchtest.
+Marcel Hild: Manchmal schreibe ich es da unten dann als Fließext rein, was er anders machen soll.
+Marcel Hild: Was man auch machen kann, ist dann jetzt äh in diesem Planfall machst du solche Kommentare rein, die er ja dann aber erkennen muss.
+Marcel Hild: Da habe ich dann immer mit äh so wie so ein Quote, also äh Spitze Klammer auf am Anfang und dann
+Christoph Jerolimov: Mhm.
+Marcel Hild: schreibst du da deinen Kommentar
+Christoph Jerolimov: hätte ich wahrscheinlich gesagt hier,
+Marcel Hild: rein.
+Christoph Jerolimov: ich habe da Kommentare.
+Christoph Jerolimov: Mach mal äh git DF
+Marcel Hild: Genau.
+Marcel Hild: Wie wie auch immer.
+Marcel Hild: Also jedenfalls äh bearbeitest du drehst jetzt so viele Schleifen wie möglich über diesen Plan, bis du der Meinung bist, okay, genauso wollen wir es machen und dann lässt ihn das umsetzen.
+Marcel Hild: Dazu gehört halt auch ähm sich wirklich die Mühe zu machen, das komplette Planfall auch zu lesen und zu verstehen und nicht nur zu überfliegen, weil so viel Vertrauen haben wir noch nicht.
+Christoph Jerolimov: Ah, ich habe schon ziemlich viel vertrauen mit drei.
+Marcel Hild: Ja, ist ja gut.
+Marcel Hild: Aber ich für mich wäre das jetzt hier schwierig zu verifizieren, aber da bist du ja hoffentlich tiefer drin,
+Christoph Jerolimov: Ja,
+Marcel Hild: ob das alles so passt,
+Christoph Jerolimov: ich bin da hoffentlich tief nicht drin.
+Marcel Hild: ne?
+Christoph Jerolimov: So,
+Marcel Hild: Nein,
+Christoph Jerolimov: der Key Decision ist das einzige, was ich glaube ich lesen muss.
+Marcel Hild: ich würde ja,
+Christoph Jerolimov: Der Rest macht total Sinn, habe ich jetzt schon
+Marcel Hild: aber auch mal oder dann kannst du auch noch mal äh fragen hier äh noch mal eine
+Christoph Jerolimov: gesehen.
+Marcel Hild: kritische äh in der Frage ist kritisch oder was auch immer.
+Marcel Hild: Jedenfalls würde ich erwarten, dass man ähm zwei bis drei Schleifen über diesen Plan dreht.
+Marcel Hild: Du kannst natürlich jetzt auch sagen, okay, passt schon so, mach mal, aber dann ist nach meiner Erfahrung die Wahrscheinlichkeit, dass am Ende wirklich das rauskommt, was du haben möchtest, geringer.
+Marcel Hild: Wenn du vorher wirklich zwei, drei Schleifen drüber drehst, bei jeder Schleife, je aus je spezifischer das ist.
+Marcel Hild: Also ich würde auch hoffen, dass da nicht ein 100enplan rauskommt, sondern so ein 3 400 Zahlenplan.
+Marcel Hild: Ähm, weil das ja dann mehr Kontext und mehr Spezifizierität für den nächsten Run gibt.
+Christoph Jerolimov: Ja, es ist ein relativ kleines Feature tatsächlich,
+Marcel Hild: Gut, vielleicht ist vielleicht reicht das ja auch.
+Christoph Jerolimov: also es ist schon,
+Marcel Hild: Wir werden
+Christoph Jerolimov: ich muss mir selber nur gerade die Frage stellen, weil er will jetzt auch wieder hier Code duplizieren.
+Marcel Hild: sehen.
+Christoph Jerolimov: Das gibt's halt schon woanders unter nicht Alpha.
+Christoph Jerolimov: ob ich ihm jetzt sage, reiß die alten Mühlen ab, was ich eigentlich völlig okay finde, statt jetzt Dinge doppelt zu haben am Ende, weil die würde ich dann wahrscheinlich im nächsten Step abräumen lassen.
+Christoph Jerolimov: Ja, ich zwar
+Marcel Hild: Richtig.
+Marcel Hild: Da ist jetzt wiederum deine Intelligenz gefragt äh und dein Urteilsvermögen.
+Christoph Jerolimov: den
+Marcel Hild: Er würde das vielleicht so vorschlagen, wenn du ih jetzt in diese Richtung nutscht.
+Marcel Hild: Sind ja immer, wie heißt das?
+Marcel Hild: Äh schmeichlerisch unterwegs.
+Marcel Hild: Ähm war mal das englische Wort ist auch egal.
+Marcel Hild: Jedenfalls egal was du ihn jetzt sagst, sagt er ist eine tolle Idee.
+Marcel Hild: Ähm musst du jetzt halt entscheiden,
+Christoph Jerolimov: klaut weniger
+Marcel Hild: macht man das in einem Pull Request?
+Marcel Hild: Macht man das in ein Follow-up request?
+Marcel Hild: Whatever.
+Christoph Jerolimov: Mhm.
+Marcel Hild: Gut, das Wichtigste ist hier, dass du da das alles über diese Session machst.
+Marcel Hild: Dann können wir dann sehen, wie das gelaufen ist und dann überlegen wir uns, wie das beim nächsten Mal ein bisschen fixer geht.
+Marcel Hild: Mein Bauchgefühl sagt mir, dass wir auf jeden Fall was äh in Richtung Gira optimieren wollen, weil da ja, das war ja schon ziemlich äh grob, aber vielleicht auch erst später, weiß ich nicht.
+Marcel Hild: Und ja, weiß ich nicht, mal gucken.
+Marcel Hild: Keine Ahnung.
+Christoph Jerolimov: Waren die anderthalb schon ungefähr so wie du es dir erhofft
+Marcel Hild: Ja, wie ich mir das ich bin von ausgern,
+Christoph Jerolimov: hast?
+Marcel Hild: dass ich erstmal verstehe, wie du arbeitest und dann ähm bringen wir uns auf einen Nenner und stellen sicher, dass dieses Capturen der des ADLC, dass das da ist,
+01:00:00
+Christoph Jerolimov: Gut.
+Marcel Hild: weil alles, was du was wir nicht capturen, können wir auch nicht äh messen und das können wir auch nicht verbessern.
+Marcel Hild: Man kann nur was verbessern, indem man es mst.
+Christoph Jerolimov: Wenn ich heute, also, weil ich ich habe ich habe,
+Marcel Hild: Ja.
+Christoph Jerolimov: also es ist mal wieder so ein kleiner AI Moment, wo ich denke, krass, also ich habe schon relativ, ich habe größere Sachen auch schon gesagt, mach mal und neue Sachen haben immer sehr gut auch funktioniert,
+Marcel Hild: Что?
+Christoph Jerolimov: also teilweise erschreckend gut.
+Christoph Jerolimov: Also, ich habe gestern ähm falls du weiter musst, ist okay, ne?
+Christoph Jerolimov: Kleine Anekdote.
+Christoph Jerolimov: Ich habe gestern ich habe nur ein Repository irgendwie HD ähm Sprints oder so genannt, weil ich genau mal gucken wollte, was ist in den Stream,
+Marcel Hild: Ja.
+Christoph Jerolimov: wo wie sind unsere Story Points und so Dinge, die man bei sich behält, ne?
+Christoph Jerolimov: Privates Reposory.
+Christoph Jerolimov: Ähm, man darf ja immer nur auf Team arbeiten.
+Christoph Jerolimov: Ähm, und ist ja auch völlig reicht ja auch völlig.
+Marcel Hild: Mm.
+Christoph Jerolimov: Ähm, aber trotzdem ich habe halt Cloder drin gestartet, hab den hab ähm Opens Back installiert und dann gesagt Op, ich würde jetzt gerne am Anfang und ich fand halt lustig, weil er hatte ja eigentlich keinerlei anderen Informationen, außer dem Repository Namen und trotzdem kamen seine Vorschläge,
+Christoph Jerolimov: oh, du möchtest HD äh äh Sprints analysieren, soll ich dir folgendes?
+Christoph Jerolimov: Dann kam so drei Vorschläge, wo ich dachte und da das das finde ich immer lustig, wenn das rein auf zwei Wörtern schon so gute Vorschläge gemacht hat.
+Christoph Jerolimov: Das fand ich das finde ich irgendwie spannend und deswegen und deswegen Green Code immer ziemlich
+Marcel Hild: Ja, es äh äh schrecken.
+Christoph Jerolimov: gut, dass der das jetzt hier hinbekommen hat.
+Christoph Jerolimov: Ich bin positiv überrascht, weil ich bin davon ausgegangen, dass die Tickets nicht gut genug sind.
+Christoph Jerolimov: Nicht,
+Marcel Hild: Ja.
+Christoph Jerolimov: dass der Task schwierig ist, wenn man ihn den beschreibt und ich habe immer das die Befürchtung unsere Giratas sind nicht gut genug.
+Marcel Hild: Genau.
+Marcel Hild: Und das ist jetzt auch so eine Optimierung, die ich mir, glaube ich, angucken würde.
+Marcel Hild: Ähm, wie hat er sich da vorbereitet?
+Marcel Hild: Hat er das aus seinem Memory gezogen?
+Marcel Hild: Das ist nämlich auch so eine versteckte Sache, die Leute häufig nicht sehen, dass äh der ja schon alle deine vorigen Sessions irgend irgend so einem Memory File abspeichert oder ist er wirklich äh hergegangen, hat sich die Chira äh Dinger angeguckt und hat dann ein bisschen Nachforschung in diesem Repo
+Marcel Hild: gemacht oder nicht.
+Marcel Hild: Das wird spannend sein, aber das bringt halt auch jetzt nichts,
+Christoph Jerolimov: Mm.
+Marcel Hild: das da durchzusollen und sich das anzugucken, ne?
+Marcel Hild: kann man ja, kannst du ja gerne machen, aber genau deswegen will ich das ja wollen wir das in dem Agents View haben, sodass wir dann mit wiederum anderen agentischen Skills das analysieren können und sagen können, okay, hier ist er zweimal in die falsche Richtung gelaufen.
+Christoph Jerolimov: Okay,
+Marcel Hild: Okay, wenn du heute noch was bitte.
+Christoph Jerolimov: die Länge ist wahrscheinlich die Länge von dem Meeting ist ja die bin ich total flexibel, ne?
+Christoph Jerolimov: Wenn du sagst, wir brauchen mehr Zeit.
+Marcel Hild: Neö, ich glaube,
+Christoph Jerolimov: Anderthalb Stunden waren jetzt äh ne,
+Marcel Hild: wir sind jetzt ja na das ist bei mir auch flexibel.
+Christoph Jerolimov: glaube ich, für heute gut, aber das
+Marcel Hild: Wir hören dann auch, wenn wir keinen Bock mehr haben oder wenn wir sagen, denken, ist alles gesagt.
+Christoph Jerolimov: klingt endet ja gerade so ein bisschen.
+Marcel Hild: Ähm ja, es ist ja auch so ein bisschen so ein Ende.
+Marcel Hild: Äh ich glaube, jetzt sind wir auch an dem Punkt angekommen, wo du wo ich dir nicht mehr helfen kann oder wo ich äh wo jetzt deine Arbeit angesagt ist.
+Marcel Hild: Ähm, wenn du heute noch ein anderes Feature anfängst, versuch das auch genauso zu machen und
+Christoph Jerolimov: Ja, ich gehe schwer davon aus.
+Marcel Hild: wenn nicht, ist auch nicht schlimm.
+Marcel Hild: Und wenn du das habe ich jetzt keinen Bock drauf ma jetzt so wie ich das immer
+Christoph Jerolimov: Nee,
+Marcel Hild: mache.
+Christoph Jerolimov: also ich ich werde heute noch was anderes machen müssen.
+Christoph Jerolimov: Kenn ne,
+Marcel Hild: Ja,
+Christoph Jerolimov: also und ich werde es auch in einer Close Session
+Marcel Hild: genau.
+Marcel Hild: Ich habe schon parallel habe ich in unserem Fullsend Skill.
+Christoph Jerolimov: machen.
+Marcel Hild: das ganz ja, wenn du Box schon mal angefangen.
+Marcel Hild: Äh noch nicht.
+Christoph Jerolimov: Also ich finde ja geil, wenn das Homepage bald mal endlich fertig werden würde.
+Christoph Jerolimov: Es nervt.
+Marcel Hild: Ja,
+Christoph Jerolimov: Ja, wo ist denn das
+Marcel Hild: aber auch noch nicht fertig ist das
+Christoph Jerolimov: hier?
+Marcel Hild: hier.
+Christoph Jerolimov: mal ganz blöde Frage noch ganz kurz, bevor ich auf den Link drücke.
+Marcel Hild: Ja.
+Christoph Jerolimov: Ähm, das hier, ne, das Homepage Backend, das das ein Attribut ändern,
+Marcel Hild: Ja.
+Christoph Jerolimov: aber was ich normalerweise gemacht hätte, wäre jetzt in Overlay Repository dort vielleicht Clode gestartet und gesagt hier such mal das Homepage Plugin und change das mal.
+Christoph Jerolimov: oder möchtest oder sollte das jetzt ist diese Hid ist unser Teamgedanke mehr als Ja, der hat ja alle meine Reporties gefunden, aber ich mag ehrlich gesagt persönlich nicht, dass der jetzt was macht in dem anderen Repository auf meinem Computer,
+01:05:00
+Christoph Jerolimov: wo ich vielleicht gerade in ein anderen Branche bin.
+Christoph Jerolimov: Ich persönlich würde das lieber selber händeln, aber
+Marcel Hild: Das bleibt dir unbelassen, wo du denn Cloud Start ist.
+Marcel Hild: Deswegen ist dieser Skill so gebaut,
+Christoph Jerolimov: M.
+Marcel Hild: dass er das global abspeichert, wo deine Repos sind.
+Marcel Hild: Ähm ist mir ist mir leider, ich glaube das einzige, also es gibt wirklich nur ein wenn wir so zehn Gebote irgendwann mal aufstellen, ist glaube ich das erste Gebot, äh ich tippe nichts in die Shell.
+Marcel Hild: Es sei denn, um in ein Verzeichnis zu wechseln, um dort wieder eine neue Agent Session zu starten.
+Christoph Jerolimov: Ja,
+Marcel Hild: Das ist das
+Christoph Jerolimov: also also ich denke halt so bei Fullsand würde ich ja auch in ein Repository gehen und ein Issue aufmachen.
+Marcel Hild: erste.
+Marcel Hild: Genau.
+Christoph Jerolimov: Mach das jetzt so.
+Marcel Hild: Genau.
+Marcel Hild: Das ma das machst du ja in dem Fall auch.
+Marcel Hild: Du gehst in deinen Repository, indem du in deinen äh Overlay Repo Clon gehst,
+Christoph Jerolimov: Was
+Marcel Hild: lokal und startest dann dann da deine Agent Session.
+Marcel Hild: Vollkommen in Ordnung.
+Christoph Jerolimov: ist das schon wieder für ein Wunderrepository.
+Christoph Jerolimov: Ah, da ist auch das schöne Image drin.
+Christoph Jerolimov: Okay, da war ich da
+Marcel Hild: Ach so,
+Christoph Jerolimov: schon.
+Marcel Hild: so das ist jetzt mal da habe ich mich noch nicht fertig, aber so stelle ich mir das ungefähr vor, ähm, dass wir ein privates Repo haben, wo diese Sessions hochgeladen werden und dann kann die können wir uns die angucken.
+Marcel Hild: Und das idealerweise mit so einem Session Close Hook oder wie auch immer.
+Christoph Jerolimov: อ
+Marcel Hild: Ich habe mir den Kran noch nicht angeguckt.
+Marcel Hild: Äh, also habe ich heute morgen gemacht, aber wird schon schon irgendwie passen.
+Christoph Jerolimov: morgen machen
+Marcel Hild: Genau, wird schon irgendwie passen.
+Christoph Jerolimov: lassen.
+Marcel Hild: Nee, d fliege ich nah noch ein paar Schleifen drüber, aber so generell als äh Konstrukt Architektur, ne?
+Marcel Hild: Also, wir haben einen Genau,
+Christoph Jerolimov: Team Session Repo ist dann das oder was?
+Christoph Jerolimov: Da wo waren
+Marcel Hild: es gibt dann irgendwo ein Repo.
+Marcel Hild: Ich fange mal mit einem privaten Repo unter meinem Account an,
+Christoph Jerolimov: die?
+Marcel Hild: dass da nur wir beide drauf Zugriff haben und dann lädst du deine Session nachher damit da hoch und ich kann sie mir dann anschauen und
+Marcel Hild: dann
+Christoph Jerolimov: Das bringt mich wieder eigentlich ein bisschen näher zu diesen Gedanken.
+Christoph Jerolimov: Eigentlich müsste man das in so einem Death Container laufen lassen,
+Marcel Hild: Ja,
+Christoph Jerolimov: aber das ist eine andere Geschichte.
+Marcel Hild: genau.
+Marcel Hild: Da kommen wir hin.
+Marcel Hild: Und das ist dann der Death Container, wo du das laufen lässt, ist ja dann hoffentlich irgendwann full und du machst es halt nicht mehr lokal, sondern lokal machst du wirklich nur Markdown Edits.
+Marcel Hild: Das ist ja dann safe quasi lokal bist du die ganze Zeit im Planmodus, wo er Sachen lesen kann.
+Marcel Hild: Das einzige, was er darf, ist ein Mark schreiben.
+Christoph Jerolimov: Mm.
+Marcel Hild: Okay,
+Christoph Jerolimov: Gut, dann werde ich heute so produktiv sein wie noch
+Marcel Hild: das hoffe ich mal.
+Marcel Hild: Also, das wäre natürlich genial,
+Christoph Jerolimov: nie.
+Marcel Hild: wenn wir schon früh ein Improvement feststellen können, aber ich kann mir auch vorstellen, dass wir mehr Reibung haben.
+Marcel Hild: Wer weiß?
+Marcel Hild: Let's see.
+Christoph Jerolimov: Let's see.
+Christoph Jerolimov: See you.
+Marcel Hild: Hob.
+Christoph Jerolimov: Thank you.
+Christoph Jerolimov: Bye bye.
+Besprechung nach 01:08:42 beendet 👋
+Dieses bearbeitbare Transkript wurde von einem Computer generiert und kann Fehler enthalten. Nutzer können den Text nach der Erstellung verändern.
