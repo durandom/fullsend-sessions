@@ -48,15 +48,24 @@ def isolated_env(tmp_path, monkeypatch):
     claude_projects = tmp_path / "claude-projects"
     claude_projects.mkdir()
 
-    config_dir = tmp_path / "config" / "fullsend"
+    config_dir = tmp_path / "config" / "rhdh-skill"
     config_dir.mkdir(parents=True)
-    config_file = config_dir / "sessions.env"
-    config_file.write_text(f"FULLSEND_SESSIONS_REPO={sessions_repo}\n")
+    config_file = config_dir / "config.json"
+    config_file.write_text(
+        json.dumps(
+            {
+                "repos": {"sessions": str(sessions_repo)},
+                "sessions": {
+                    "enabled": True,
+                    "policy": {"default": "deny", "rules": []},
+                },
+            }
+        )
+    )
 
-    monkeypatch.setattr("fs_sessions.config.CONFIG_FILE", config_file)
+    monkeypatch.setenv("RHDH_SKILL_CONFIG", str(config_file))
     monkeypatch.setattr("fs_sessions.config.CLAUDE_PROJECTS_DIR", claude_projects)
     monkeypatch.setattr("fs_sessions.discovery.CLAUDE_PROJECTS_DIR", claude_projects)
-    monkeypatch.delenv("FULLSEND_SESSIONS_REPO", raising=False)
 
     return {
         "sessions_repo": sessions_repo,
