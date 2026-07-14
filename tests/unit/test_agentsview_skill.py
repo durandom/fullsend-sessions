@@ -72,6 +72,22 @@ def test_skill_keeps_analysis_and_destructive_operations_out_of_scope():
     assert "never use `--reveal`" in content
 
 
+def test_workflows_use_preflight_binary_and_document_live_snapshots():
+    skill = (SKILL_DIR / "SKILL.md").read_text(encoding="utf-8")
+    references = "\n".join(
+        path.read_text(encoding="utf-8")
+        for path in (SKILL_DIR / "references").glob("*.md")
+    )
+
+    assert "AGENTSVIEW_BIN" in skill
+    assert 'invitation to "try"' in skill
+    assert "tool_call_pending" in skill
+    assert "agentsview session" not in references
+    assert '"$AGENTSVIEW_BIN"' in references
+    assert "top-level `matches`" in references
+    assert "`breakdown`" in references
+
+
 def test_preflight_reports_missing_binary_as_json():
     script = SKILL_DIR / "scripts" / "preflight.py"
     result = subprocess.run(
@@ -115,6 +131,28 @@ def test_preflight_requires_session_command_group(monkeypatch):
     assert payload["working"] is False
     assert payload["session_api"] is False
     assert "Upgrade" in payload["remediation"]
+
+
+def test_preflight_honors_binary_environment_override(tmp_path, monkeypatch):
+    preflight = load_preflight_module()
+    binary = tmp_path / "agentsview"
+    binary.write_text("#!/bin/sh\n", encoding="utf-8")
+    binary.chmod(0o755)
+    monkeypatch.setenv("AGENTSVIEW_BIN", str(binary))
+    monkeypatch.setattr(preflight.shutil, "which", lambda _name: None)
+
+    assert preflight.resolve_binary("") == str(binary.resolve())
+
+
+def test_explicit_binary_wins_over_environment(tmp_path, monkeypatch):
+    preflight = load_preflight_module()
+    explicit = tmp_path / "explicit-agentsview"
+    explicit.write_text("#!/bin/sh\n", encoding="utf-8")
+    explicit.chmod(0o755)
+    monkeypatch.setenv("AGENTSVIEW_BIN", str(tmp_path / "other"))
+    monkeypatch.setattr(preflight.shutil, "which", lambda _name: None)
+
+    assert preflight.resolve_binary(str(explicit)) == str(explicit.resolve())
 
 
 def test_preflight_has_help():

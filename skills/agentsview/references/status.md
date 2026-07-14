@@ -9,21 +9,21 @@ It does not install, update, or synchronize AgentsView.
 2. If the user asked about the daemon, inspect it without starting it:
 
    ```bash
-   agentsview serve status
+   "$AGENTSVIEW_BIN" serve status
    ```
 
    A stopped daemon is not an error because a normal read may start it.
 3. Discover indexed projects:
 
    ```bash
-   agentsview projects --json
+   "$AGENTSVIEW_BIN" projects --json
    ```
 
 4. If the user asks whether data is current, explain that read commands can use
    AgentsView's normal local refresh behavior. Do not run an explicit sync
    silently.
 5. If freshness cannot be established from the requested records, offer one
-   explicit `agentsview sync`. Run it only after approval. Add `--full` only if
+   explicit `"$AGENTSVIEW_BIN" sync`. Run it only after approval. Add `--full` only if
    the user separately agrees to rebuild the full local index.
 
 ## Output
