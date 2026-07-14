@@ -1,95 +1,68 @@
-# setup
+# Setup or migrate
 
-Automated first-time setup for session sharing. Run each step, report results.
+Use this workflow for first-time global setup or migration from the legacy project-local Bash hook.
 
-## Procedure
+## 1. Resolve the shared sessions repository
 
-### 1. Check prerequisites
+Prefer, in order:
 
-```bash
-command -v python3 >/dev/null 2>&1 && echo "python3: ok" || echo "python3: MISSING"
-command -v git >/dev/null 2>&1 && echo "git: ok" || echo "git: MISSING"
-```
+1. Existing `repos.sessions` in `~/.config/rhdh-skill/config.json`.
+2. Legacy `FULLSEND_SESSIONS_REPO` from `~/.config/fullsend/sessions.env`.
+3. A path supplied by the user.
 
-If missing, tell the user to install them and stop. The Python scripts handle JSON natively, so `jq` is no longer required.
+Require an existing Git repository containing or intended to contain `sessions/`.
 
-### 2. Locate the sessions repo
-
-Check if running inside the fullsend-sessions repo (look for `skills/fs-sessions/scripts/export-session`):
+## 2. Initialize safe global configuration
 
 ```bash
-# Try cwd first, then common locations
-for candidate in "." "$HOME/fullsend-sessions" "$HOME/src/fullsend-sessions"; do
-  if [ -f "$candidate/skills/fs-sessions/scripts/export-session" ]; then
-    echo "Found: $(cd "$candidate" && pwd)"
-    break
-  fi
-done
+"$FS" config init --repo /absolute/path/to/fullsend-sessions --default deny
 ```
 
-If not found, ask the user where they cloned the repo, or tell them to clone it first:
-```bash
-git clone git@github.com:durandom/fullsend-sessions.git
-```
+This updates only `repos.sessions` and `sessions`; it preserves all other `rhdh-skill` configuration.
 
-Store the resolved absolute path as `SESSIONS_REPO` for the remaining steps.
+## 3. Add the initial allow rule
 
-### 3. Create the config file
+For migration, preserve the behavior of each repository that already had a local hook. Prefer an origin rule for team repositories and a path rule for local-only repositories:
 
 ```bash
-mkdir -p ~/.config/fullsend
-cat > ~/.config/fullsend/sessions.env << EOF
-FULLSEND_SESSIONS_REPO=${SESSIONS_REPO}
-EOF
-chmod 600 ~/.config/fullsend/sessions.env
+"$FS" policy allow --origin 'github.com/example-org/*'
+# or
+"$FS" policy allow --path '/absolute/path/to/repository'
 ```
 
-### 4. Install the SessionEnd hook (project-local)
+Do not change `default` to `allow` merely to make setup convenient; that would export every Git repository not explicitly denied.
 
-Install the hook into the **current project's** `.claude/settings.json` so only this project auto-exports sessions.
+## 4. Preview the decision
 
 ```bash
-SETTINGS_FILE=".claude/settings.json"
-mkdir -p ".claude"
+"$FS" policy check /absolute/path/to/repository
 ```
 
-If `$SETTINGS_FILE` exists, read it. Otherwise start with `{}`.
+Continue only when it reports `allow` and the expected rule number.
 
-The hook entry to merge:
-```json
-{
-  "hooks": {
-    "SessionEnd": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash -c '. ~/.config/fullsend/sessions.env 2>/dev/null && [ -n \"$FULLSEND_SESSIONS_REPO\" ] && [ -f \"$FULLSEND_SESSIONS_REPO/skills/fs-sessions/scripts/export-session\" ] && exec python3 \"$FULLSEND_SESSIONS_REPO/skills/fs-sessions/scripts/export-session\" || true'"
-          }
-        ]
-      }
-    ]
-  }
-}
-```
-
-Merge this entry into the JSON directly. Preserve all existing settings. If `hooks.SessionEnd` already contains a command with `export-session`, skip the update; otherwise append this entry to the existing array. Do not require `jq` just for this edit.
-
-Show the user what changed. Remind them to commit `.claude/settings.json` so teammates get the hook too.
-
-### 5. Verify
-
-Report the setup state:
+## 5. Install the global hook
 
 ```bash
-echo ""
-echo "=== Setup complete ==="
-echo "Config:  ~/.config/fullsend/sessions.env"
-echo "Hook:    .claude/settings.json (SessionEnd)"
-echo "Repo:    ${SESSIONS_REPO}"
-echo ""
-echo "Sessions from this project will be auto-exported and pushed on session end."
-echo "Commit .claude/settings.json so teammates get the hook too."
-echo "Run /fs-sessions status to verify after your next session."
+"$FS" hook install
+"$FS" hook status
 ```
+
+The installer replaces prior managed hooks in the selected settings file and preserves unrelated settings/hooks.
+
+## 6. Remove legacy project hooks
+
+After the global status and policy check pass, inspect each formerly configured project. Remove only the managed session hook:
+
+```bash
+"$FS" hook uninstall --settings /path/to/project/.claude/settings.json
+```
+
+Keep unrelated project hooks. Commit the project settings change when that settings file is tracked.
+
+## 7. Verify
+
+```bash
+"$FS" status
+```
+
+Setup is complete when config is valid, the intended repository is allowed, exactly one global managed hook exists, and no legacy project-local session hook remains.

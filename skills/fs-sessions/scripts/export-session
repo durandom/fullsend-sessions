@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""SessionEnd hook — reads JSON from stdin, exports transcript to shared repo."""
+"""Legacy SessionEnd entry point; delegate to the policy-controlled hook."""
 
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from fs_sessions.cli import hook_main  # noqa: E402
+from fs_sessions.cli import main  # noqa: E402
 
-hook_main()
+raise SystemExit(main(["hook", "run"]))

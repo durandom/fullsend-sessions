@@ -1,26 +1,17 @@
-# push / pull
+# Push or pull shared sessions
 
-Sync session transcripts with the remote.
+Resolve the repository with `"$FS" config show`, then run Git inside that repository.
 
-## push
-
-Push local session commits to the remote:
+Push:
 
 ```bash
-git push
+git -C /path/to/fullsend-sessions push
 ```
 
-Report how many commits were pushed. If no remote is configured, tell the user:
-```bash
-git remote add origin <url>
-```
-
-## pull
-
-Pull team sessions from the remote:
+Pull without merge commits:
 
 ```bash
-git pull --rebase
+git -C /path/to/fullsend-sessions pull --rebase
 ```
 
-Report new sessions received. If there are merge conflicts (unlikely with per-session files), advise the user.
+Report commits transferred and newly available session files. Do not resolve transcript conflicts by editing content; preserve both source transcripts or ask the user when paths collide.
