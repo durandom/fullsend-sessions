@@ -1,39 +1,32 @@
-"""Thin subprocess wrappers for git operations."""
+"""Small, testable wrappers around the Git operations used by the hook."""
 
 from __future__ import annotations
 
 import subprocess
 from pathlib import Path
+from typing import List
 
 
-def _run(args: list[str], cwd: Path) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
-        args,
-        cwd=cwd,
+def run(repo: Path, args: List[str]) -> bool:
+    result = subprocess.run(
+        ["git", *args],
+        cwd=repo,
         capture_output=True,
         text=True,
     )
+    return result.returncode == 0
 
 
-def add(repo: Path, filepath: str) -> bool:
-    """Stage a file. Returns True on success."""
-    r = _run(["git", "add", filepath], cwd=repo)
-    return r.returncode == 0
-
-
-def commit(repo: Path, message: str) -> bool:
-    """Commit staged changes. Returns True on success."""
-    r = _run(["git", "commit", "-q", "-m", message], cwd=repo)
-    return r.returncode == 0
+def commit_file(repo: Path, relative_path: str, message: str) -> bool:
+    """Commit only the exported transcript, leaving unrelated staged files alone."""
+    if not run(repo, ["add", "--", relative_path]):
+        return False
+    return run(repo, ["commit", "-q", "--only", "-m", message, "--", relative_path])
 
 
 def pull_rebase(repo: Path) -> bool:
-    """Pull with rebase. Returns True on success."""
-    r = _run(["git", "pull", "--rebase", "-q"], cwd=repo)
-    return r.returncode == 0
+    return run(repo, ["pull", "--rebase", "-q"])
 
 
 def push(repo: Path) -> bool:
-    """Push to remote. Returns True on success."""
-    r = _run(["git", "push", "-q"], cwd=repo)
-    return r.returncode == 0
+    return run(repo, ["push", "-q"])

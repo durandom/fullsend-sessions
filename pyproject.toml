@@ -4,9 +4,9 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "fs-sessions"
-version = "0.1.0"
+version = "0.2.0"
 requires-python = ">=3.10"
-description = "Share and browse Claude Code session transcripts"
+description = "Policy-controlled sharing and browsing of Claude Code session transcripts"
 
 [dependency-groups]
 dev = ["pytest>=7.0", "ruff>=0.4"]
@@ -23,6 +23,7 @@ testpaths = ["tests"]
 [tool.ruff]
 src = ["skills/fs-sessions", "tests"]
 target-version = "py310"
+exclude = ["agentsview"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "W"]

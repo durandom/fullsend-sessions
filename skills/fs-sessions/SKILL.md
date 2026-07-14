@@ -1,47 +1,85 @@
 ---
 name: fs-sessions
 description: |
-  Manage shared Claude Code session transcripts — setup, status, push, pull, view in AgentsView.
-  Use when asked to share, export, push, or pull Claude Code sessions,
-  configure session sharing, view shared team sessions, browse sessions,
-  set up session hooks, or start AgentsView for sessions.
+  Manage and share Claude Code session transcripts through a policy-controlled global SessionEnd hook and AgentsView. Use when asked to configure session sharing, install or migrate the session hook globally, whitelist or blacklist repositories, diagnose why a repository is or is not exporting, share/list/push/pull sessions, or start AgentsView for team transcripts. Also use for requests mentioning fs-sessions, FULLSEND_SESSIONS_REPO, session export, transcript sharing, or repository-specific session privacy.
 ---
 
-# /fs-sessions
+# fs-sessions
 
-Share and browse team Claude Code session transcripts via a shared git repo.
+Share Claude Code transcripts through a global, fail-closed repository policy.
 
-## Overview
+<cli_setup>
 
-Sessions are auto-exported and pushed on session end via a `SessionEnd` hook in the project's `.claude/settings.json`. AgentsView serves them for browsing, searching, and analysis.
+Resolve the CLI relative to this file and use it for every deterministic operation:
 
-### How it works
+```bash
+FS="<skill-directory>/scripts/fs-sessions"
+"$FS" --help
+```
 
-1. **SessionEnd hook** fires when any Claude Code session ends
-2. `export-session` copies the transcript to `sessions/<user>_<project>/`
-3. Commits locally, then pulls and pushes to the shared remote
-4. Teammates pull to see each other's sessions
+Consume complete command output. Do not reimplement JSON or Claude settings edits manually.
 
-## Commands
+</cli_setup>
 
-| Command | Description |
-|---------|-------------|
-| `setup` | Automated first-time setup: config, hook, verify |
-| `status` | Config check, session count, unpushed commits |
-| `push` | Push local session commits to remote |
-| `pull` | Pull team sessions from remote |
-| `view` | Start AgentsView with shared sessions |
+<essential_principles>
 
-If no subcommand is given, show status.
+- **Global policy grants access** — only `~/.config/rhdh-skill/config.json` may allow export. A repository's `.rhdh/config.json` may set `sessions.enabled: false`, but cannot opt itself in; this prevents checked-out code from authorizing transcript upload.
+- **Fail closed** — malformed/missing config, non-Git directories, unmatched repositories under `default: deny`, and export errors all skip silently in the SessionEnd hook.
+- **Rules are ordered** — the last matching `allow` or `deny` rule wins. This supports whitelist, blacklist, and narrow exceptions with one explainable model.
+- **One global hook** — install into `~/.claude/settings.json`. After verifying it, remove legacy project-local `export-session.sh` hooks so a session cannot be exported twice.
+- **Transcripts remain append-only in Git** — the exporter may refresh its copied file when the source grows, but do not manually alter shared transcript content.
 
-## Routing
+</essential_principles>
 
-Parse the first word after `/fs-sessions` as the subcommand.
+<intake>
 
-| Command | Reference |
-|---------|-----------|
-| `setup` | `references/setup.md` |
-| `status` | `references/status.md` |
-| `push` | `references/sync.md` |
-| `pull` | `references/sync.md` |
-| `view` | `references/view.md` |
+## What would you like to do?
+
+1. **Setup or migrate** — configure the shared repo, safe policy, and global hook
+2. **Policy** — allow, deny, list rules, or explain a repository decision
+3. **Hook** — install, inspect, or uninstall the global SessionEnd hook
+4. **Status** — inspect configuration, hook, policy, and stored sessions
+5. **Share/list** — explicitly export or list local sessions
+6. **Push/pull** — synchronize the shared sessions repository
+7. **View** — start or stop AgentsView
+
+If the user already stated an operation, route directly without repeating this menu. Otherwise wait for their selection.
+
+</intake>
+
+<routing>
+
+| Response | Reference |
+|----------|-----------|
+| 1, "setup", "migrate", "global install" | `references/setup.md` |
+| 2, "policy", "allow", "deny", "whitelist", "blacklist" | `references/policy.md` |
+| 3, "hook", "SessionEnd", "install hook" | `references/hook.md` |
+| 4, "status", "configured?", "why not exporting?" | `references/status.md` |
+| 5, "share", "export", "list sessions" | `references/share.md` |
+| 6, "push", "pull", "sync" | `references/sync.md` |
+| 7, "view", "AgentsView", "browse sessions" | `references/view.md` |
+
+</routing>
+
+<reference_index>
+
+| Reference | Load when | Path |
+|-----------|-----------|------|
+| setup | First installation or legacy-hook migration | `references/setup.md` |
+| policy | Editing or explaining repository rules | `references/policy.md` |
+| hook | Hook-only lifecycle work | `references/hook.md` |
+| status | Diagnosing the current state | `references/status.md` |
+| share | Explicit manual export/list | `references/share.md` |
+| sync | Git synchronization | `references/sync.md` |
+| view | AgentsView lifecycle | `references/view.md` |
+
+</reference_index>
+
+<success_criteria>
+
+- Configuration preserves unrelated `rhdh-skill` keys and validates successfully.
+- `policy check <repo>` reports the intended action and matching rule.
+- Exactly one managed hook exists globally; legacy local hooks are absent after migration.
+- A denied repository produces no exported file; an allowed repository exports only its transcript path.
+
+</success_criteria>

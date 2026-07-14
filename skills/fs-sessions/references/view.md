@@ -1,21 +1,11 @@
-# view
+# View in AgentsView
 
-Start AgentsView to browse shared sessions.
-
-## Procedure
+Resolve the sessions repository with `"$FS" config show` and use its supported AgentsView command. For `fullsend-sessions`:
 
 ```bash
-just sessions
+just -d /path/to/fullsend-sessions sessions
 ```
 
-This will:
-1. Start the podman machine if not already running
-2. Read `~/.config/fullsend/sessions.env` to find the sessions directory (`FULLSEND_SESSIONS_REPO`)
-3. Start AgentsView with `--public-url` set to `$(hostname).local` for LAN access
+To force a complete re-index, stop the repository's compose stack with its volume-removal command before restarting. Do not delete or rewrite files under `sessions/`.
 
-To stop:
-```bash
-just down
-```
-
-Sessions appear grouped by `<user>_<project>` in the AgentsView sidebar. The metadata line prepended by `export-session.sh` provides the session title and project grouping.
+Sessions appear under `<user>_<project>`. The first synthetic user message supplies the session title and virtual `/sessions/<user>_<project>` working directory.

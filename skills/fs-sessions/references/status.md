@@ -1,43 +1,27 @@
-# status
+# Status and diagnosis
 
-Show the current state of the sessions repo.
+Run:
 
-## Procedure
+```bash
+"$FS" status
+```
 
-Check and report each item:
+It reports the global config path, sessions repository, enabled state, policy, global hook, and stored transcript count.
 
-1. **Config**: Is `~/.config/fullsend/sessions.env` present with `FULLSEND_SESSIONS_REPO` set?
-   ```bash
-   . ~/.config/fullsend/sessions.env 2>/dev/null
-   echo "Sessions repo: ${FULLSEND_SESSIONS_REPO:-not set}"
-   ```
+For a repository-specific diagnosis, also run:
 
-2. **Session count**: How many transcripts are stored?
-   ```bash
-   find sessions/ -name '*.jsonl' 2>/dev/null | wc -l
-   ```
+```bash
+"$FS" policy check /path/to/repository
+```
 
-3. **Project breakdown**: Which projects have sessions?
-   ```bash
-   for d in sessions/*/; do
-     [ -d "$d" ] && echo "$(basename "$d"): $(find "$d" -name '*.jsonl' | wc -l) sessions"
-   done
-   ```
+Interpret common denial reasons:
 
-4. **Unpushed commits**: Any local commits not yet pushed?
-   ```bash
-   git log --oneline '@{upstream}..HEAD' 2>/dev/null
-   ```
+| Reason | Meaning | Action |
+|--------|---------|--------|
+| `not_git_repository` | `cwd` has no Git root | No automatic export; use an explicit share if desired |
+| `globally_disabled` | `sessions.enabled` is false | Enable globally only after user confirmation |
+| `project_opt_out` | `.rhdh/config.json` disables sharing | Preserve the opt-out unless the user owns and changes it |
+| `default_deny` | No allow rule matched | Add the narrowest suitable origin/path allow rule |
+| `matched_rule` | An ordered rule decided | Report its one-based index and selector |
 
-5. **Last sync**: When was the last push/pull?
-   ```bash
-   git log --oneline -1 '@{upstream}' 2>/dev/null
-   ```
-
-6. **Hook installed**: Is the SessionEnd hook present in this project's `.claude/settings.json`?
-   ```bash
-   jq -e '.hooks.SessionEnd[]?.hooks[]? | select(.command | contains("export-session.sh"))' .claude/settings.json >/dev/null 2>&1 \
-     && echo "Hook: installed" || echo "Hook: NOT installed"
-   ```
-
-If not configured, suggest running `/fs-sessions setup`.
+If hook status is installed but no export occurs, check policy first, then validate `repos.sessions`, Git identity, and the sessions repository remote.
