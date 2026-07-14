@@ -1,3 +1,10 @@
 # Fetched/imported runs (local working data, not shared)
 runs/
 runs-local/
+
+# Local AgentsView checkout and SQLite runtime state
+/agentsview/
+/sessions.db-*
+
+# Generated Python packaging metadata
+*.egg-info/
