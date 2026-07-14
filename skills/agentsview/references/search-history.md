@@ -15,14 +15,14 @@ examples, errors, files, or commands. A search snippet is a lead, not an answer.
 Concept example:
 
 ```bash
-agentsview session search "why use a separate worker" \
+"$AGENTSVIEW_BIN" session search "why use a separate worker" \
   --hybrid --scope top --context 2 --limit 8 --json
 ```
 
 Exact example across messages and tool I/O:
 
 ```bash
-agentsview session search "permission denied" \
+"$AGENTSVIEW_BIN" session search "permission denied" \
   --in messages,tool_input,tool_result \
   --context 2 --limit 8 --json
 ```
@@ -37,11 +37,13 @@ and results.
 1. Translate the request into focused vocabulary and likely projects or dates.
 2. Run at most 4-6 distinct probes. Several short exact queries are better than
    one overloaded FTS expression.
-3. Triage the top results from their snippets and inline context.
+3. Read results from the top-level `matches` array and pagination from
+   `next_cursor`. Triage the top matches from their `snippet`, `ordinal`,
+   `ordinal_range`, and inline context.
 4. Deep-read only the strongest 2-4 sessions:
 
    ```bash
-   agentsview session messages <session-id> \
+   "$AGENTSVIEW_BIN" session messages <session-id> \
      --around <anchor> --before 8 --after 8 \
      --role user,assistant --json
    ```
