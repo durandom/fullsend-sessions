@@ -1,0 +1,22 @@
+{
+  "status": {
+    "description": "Check whether the local AgentsView CLI works, inspect daemon status, and list indexed projects.",
+    "argumentHint": ""
+  },
+  "find": {
+    "description": "Find and filter recorded agent sessions by project, agent, date, activity, outcome, or health metadata.",
+    "argumentHint": "[filters or natural-language criteria]"
+  },
+  "inspect": {
+    "description": "Inspect one recorded session's metadata, transcript messages, tool calls, health signals, or token usage.",
+    "argumentHint": "<session-id> [requested details]"
+  },
+  "search": {
+    "description": "Search recorded session history for prior decisions, instructions, examples, errors, files, or commands.",
+    "argumentHint": "<query> [project or date scope]"
+  },
+  "report": {
+    "description": "Retrieve factual AgentsView stats, activity, cost, and token totals for a local date window.",
+    "argumentHint": "[date range] [project, agent, or machine filters]"
+  }
+}
