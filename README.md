@@ -10,7 +10,7 @@ Sessions are auto-exported when a Claude Code session ends, committed to this sh
 # 1. Clone (anywhere you like)
 git clone git@github.com:durandom/fullsend-sessions.git
 
-# 2. Install the skill
+# 2. Install the session-sharing skill
 npx skills add git@github.com:durandom/fullsend-sessions.git --skill fs-sessions
 
 # 3. Run setup (in any Claude Code session)
@@ -74,6 +74,17 @@ Once installed, use `/fs-sessions` in any Claude Code session:
 | `/fs-sessions pull` | Pull team sessions from remote |
 | `/fs-sessions view` | Start AgentsView |
 
+The repository also contains an `agentsview` skill for factual, read-only access
+to a local AgentsView archive through its CLI:
+
+```bash
+npx skills add git@github.com:durandom/fullsend-sessions.git --skill agentsview
+```
+
+It can find and inspect sessions, search historical evidence, and retrieve
+health, usage, activity, and stats data. Session-quality analysis and workflow
+recommendations are intentionally out of scope.
+
 ## Pod
 
 This repo is home to the RHDH AI-Augmented Pod — a focused sub-team experimenting with AI-driven engineering workflows. See [docs/](docs/) for the charter and operating principles.
@@ -97,6 +108,10 @@ skills/fs-sessions/                   # agent skill (npx skills add)
     export-session.sh                 # legacy Bash hook
     fs-sessions.sh                    # legacy Bash CLI
   references/                         # skill command references
+skills/agentsview/                    # factual local AgentsView retrieval skill
+  SKILL.md                            # router and shared guardrails
+  references/                         # status, find, inspect, search, report
+  scripts/preflight.py                # read-only CLI capability check
 ```
 
 ## Prerequisites
