@@ -6,7 +6,8 @@ retrieves facts without evaluating the session's quality.
 ## 1. Resolve Metadata and Signals
 
 ```bash
-"$AGENTSVIEW_BIN" session get <session-id> --json
+"$AGENTSVIEW_BIN" session get <session-id> \
+  "${AGENTSVIEW_SERVER_ARGS[@]}" --json
 ```
 
 Capture the canonical ID, project, agent, machine, branch, working directory,
@@ -33,6 +34,7 @@ For an opening or complete linear view:
 
 ```bash
 "$AGENTSVIEW_BIN" session messages <session-id> \
+  "${AGENTSVIEW_SERVER_ARGS[@]}" \
   --from 0 --limit 50 --direction asc --role user,assistant --json
 ```
 
@@ -40,6 +42,7 @@ For the end of a session:
 
 ```bash
 "$AGENTSVIEW_BIN" session messages <session-id> \
+  "${AGENTSVIEW_SERVER_ARGS[@]}" \
   --limit 20 --direction desc --role user,assistant --json
 ```
 
@@ -47,6 +50,7 @@ For evidence around a known ordinal:
 
 ```bash
 "$AGENTSVIEW_BIN" session messages <session-id> \
+  "${AGENTSVIEW_SERVER_ARGS[@]}" \
   --around <ordinal> --before 8 --after 8 \
   --role user,assistant --json
 ```
@@ -58,8 +62,10 @@ newest page. Do not combine `--around` with `--from` or `--direction`.
 ## 3. Retrieve Tool or Usage Facts When Requested
 
 ```bash
-"$AGENTSVIEW_BIN" session tool-calls <session-id> --json
-"$AGENTSVIEW_BIN" session usage <session-id> --json
+"$AGENTSVIEW_BIN" session tool-calls <session-id> \
+  "${AGENTSVIEW_SERVER_ARGS[@]}" --json
+"$AGENTSVIEW_BIN" session usage <session-id> \
+  "${AGENTSVIEW_SERVER_ARGS[@]}" --json
 ```
 
 Tool-call rows expose ordinal, name, category, input JSON, inferred skill name,

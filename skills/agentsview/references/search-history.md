@@ -16,6 +16,7 @@ Concept example:
 
 ```bash
 "$AGENTSVIEW_BIN" session search "why use a separate worker" \
+  "${AGENTSVIEW_SERVER_ARGS[@]}" \
   --hybrid --scope top --context 2 --limit 8 --json
 ```
 
@@ -23,6 +24,7 @@ Exact example across messages and tool I/O:
 
 ```bash
 "$AGENTSVIEW_BIN" session search "permission denied" \
+  "${AGENTSVIEW_SERVER_ARGS[@]}" \
   --in messages,tool_input,tool_result \
   --context 2 --limit 8 --json
 ```
@@ -44,6 +46,7 @@ and results.
 
    ```bash
    "$AGENTSVIEW_BIN" session messages <session-id> \
+     "${AGENTSVIEW_SERVER_ARGS[@]}" \
      --around <anchor> --before 8 --after 8 \
      --role user,assistant --json
    ```

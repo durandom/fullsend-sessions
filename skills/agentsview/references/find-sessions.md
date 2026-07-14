@@ -7,9 +7,9 @@ when selection depends on transcript content.
 ## Start Narrow
 
 Translate stated constraints into `session list` flags. Resolve user-facing
-repository names against `"$AGENTSVIEW_BIN" projects --json` before applying a
-`--project` filter; indexed project names may normalize punctuation such as
-hyphens to underscores. Useful flags
+repository names against the container projects command from `status.md` before
+applying a `--project` filter; indexed project names may normalize punctuation
+such as hyphens to underscores. Useful flags
 include:
 
 | Intent | Flag |
@@ -30,6 +30,7 @@ Example:
 
 ```bash
 "$AGENTSVIEW_BIN" session list \
+  "${AGENTSVIEW_SERVER_ARGS[@]}" \
   --since 14d \
   --project example-project \
   --min-user-messages 2 \
