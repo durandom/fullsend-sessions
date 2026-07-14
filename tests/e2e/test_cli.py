@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import io
 import json
+import subprocess
 
 import pytest
 
@@ -92,12 +93,54 @@ class TestMainLast:
                 "R", (), {"stdout": "test-user\n", "returncode": 0}
             )(),
         )
-        monkeypatch.setattr("sys.stdin", io.StringIO("y\n"))
-        monkeypatch.setattr("builtins.input", lambda _: "y")
+        monkeypatch.setattr("sys.stdin", io.StringIO("n\n"))
+        monkeypatch.setattr("builtins.input", lambda _: "n")
 
         main(["--last"])
         captured = capsys.readouterr()
         assert "Copied" in captured.out
+
+    def test_last_without_cwd_commits_fallback_project(self, isolated_env, monkeypatch):
+        projects = isolated_env["claude_projects"]
+        repo = isolated_env["sessions_repo"]
+        transcript = make_transcript(
+            projects,
+            project_name="legacy-project",
+            cwd=None,
+        )
+
+        monkeypatch.setattr(
+            "fs_sessions.config.subprocess.run",
+            lambda *a, **kw: type(
+                "R", (), {"stdout": "test-user\n", "returncode": 0}
+            )(),
+        )
+        monkeypatch.setattr("builtins.input", lambda _: "n")
+
+        main(["--last"])
+
+        exported = (
+            repo / "sessions" / "test-user_Users-test-legacy-project" / transcript.name
+        )
+        assert exported.exists()
+        assert (
+            subprocess.run(
+                ["git", "diff", "--quiet", "HEAD", "--", str(exported)],
+                cwd=repo,
+            ).returncode
+            == 0
+        )
+
+    def test_git_failure_exits_nonzero(self, isolated_env, monkeypatch, capsys):
+        projects = isolated_env["claude_projects"]
+        make_transcript(projects)
+        monkeypatch.setattr("fs_sessions.cli.add", lambda *a, **kw: False)
+
+        with pytest.raises(SystemExit) as exc_info:
+            main(["--last"])
+
+        assert exc_info.value.code == 1
+        assert "failed to stage" in capsys.readouterr().err
 
 
 class TestMainErrors:
