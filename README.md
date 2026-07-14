@@ -12,7 +12,7 @@ git clone git@github.com:durandom/fullsend-sessions.git
 
 # 2. Install the session-sharing skill globally
 npx skills add -g git@github.com:durandom/fullsend-sessions.git \
-  --skill fs-sessions --agent claude-code codex -y
+  --skill fs-sessions --agent claude-code codex -y --copy
 
 # 3. Resolve the installed CLI
 FS_SESSIONS="$HOME/.agents/skills/fs-sessions/scripts/fs-sessions"
@@ -29,16 +29,73 @@ FS_SESSIONS="$HOME/.agents/skills/fs-sessions/scripts/fs-sessions"
 
 Configuration lives in `~/.config/rhdh-skill/config.json` so it can later move into the RHDH skill without another migration. The hook lives once in `~/.claude/settings.json`; repositories cannot install their own permission to export transcripts.
 
+### Update the skill
+
+The global installation remembers its Git source. Pull the current
+`fs-sessions` version with:
+
+```bash
+npx skills update -g fs-sessions
+```
+
+Start a new Claude Code session after installing or updating so Claude
+discovers the current skill instructions. Confirm the installation when needed
+with:
+
+```bash
+npx skills list -g --json
+```
+
+### Configure through Claude Code
+
+Claude can run the policy and hook CLI through the installed skill. For a safe
+initial setup, ask:
+
+> Use fs-sessions to configure `/absolute/path/to/fullsend-sessions` as my
+> shared sessions repository. Keep the policy default-deny, install exactly one
+> global SessionEnd hook, and show the resulting status.
+
+Allow another repository with an origin rule:
+
+> Use fs-sessions to allow automatic session sharing for
+> `/absolute/path/to/repository`. Keep default-deny, prefer an origin rule, and
+> show the normalized origin and policy decision afterward.
+
+Inspect an existing setup without changing it:
+
+> Use fs-sessions to show the current configuration and hook status, and
+> explain whether this repository is allowed to export sessions.
+
+For mixed policies, state the broad rule before its narrower exceptions because
+the last matching rule wins:
+
+> Use fs-sessions with default-deny. Allow `github.com/example-org/*`, deny
+> `/work/customer-*`, then allow `/work/customer-sanitized-demo`. Show the
+> ordered rules and verify each affected repository.
+
 ## How it works
 
 ```
 Session ends → global SessionEnd hook → repository policy check
-  → copies transcript to sessions/<user>_<project>/<session-id>.jsonl
+  → copies the parent transcript and its complete companion directory
   → git commit
   → git pull --rebase && git push (best-effort, silent on failure)
 ```
 
-Sessions are stored as JSONL files matching the AgentsView Claude discovery layout. Each file gets a metadata header line with project name, user, and timestamp.
+Sessions preserve Claude's AgentsView-compatible layout:
+
+```text
+sessions/<user>_<project>/
+  <session-id>.jsonl
+  <session-id>/
+    subagents/**
+    tool-results/**
+    <other regular companion files>
+```
+
+The parent transcript gets a metadata header with project, user, and timestamp. Companion files are copied byte-for-byte, including binary attachments; symlinks are skipped. This lets AgentsView connect delegated subagent work to its parent and resolve externalized tool results.
+
+After an upload succeeds, Claude Code shows a message such as `fs-sessions: exported and uploaded 3 session files to Git for example/session-id.` Denied or unchanged sessions stay quiet, and the hook never reports a backend upload that failed.
 
 ## Repository policy
 

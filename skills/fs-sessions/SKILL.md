@@ -27,6 +27,7 @@ Consume complete command output. Do not reimplement JSON or Claude settings edit
 - **Fail closed** — malformed/missing config, non-Git directories, unmatched repositories under `default: deny`, and export errors all skip silently in the SessionEnd hook.
 - **Rules are ordered** — the last matching `allow` or `deny` rule wins. This supports whitelist, blacklist, and narrow exceptions with one explainable model.
 - **One global hook** — install into `~/.claude/settings.json`. After verifying it, remove legacy project-local `export-session.sh` hooks so a session cannot be exported twice.
+- **Export the complete session family** — preserve the main transcript plus its nested subagents, tool results, and other regular companion files. Keeping Claude's relative layout lets AgentsView link delegated work to its parent session.
 - **Transcripts remain append-only in Git** — the exporter may refresh its copied file when the source grows, but do not manually alter shared transcript content.
 
 </essential_principles>
@@ -80,6 +81,6 @@ If the user already stated an operation, route directly without repeating this m
 - Configuration preserves unrelated `rhdh-skill` keys and validates successfully.
 - `policy check <repo>` reports the intended action and matching rule.
 - Exactly one managed hook exists globally; legacy local hooks are absent after migration.
-- A denied repository produces no exported file; an allowed repository exports only its transcript path.
+- A denied repository produces no exported file; an allowed repository exports its complete session family without unrelated files.
 
 </success_criteria>

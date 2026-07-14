@@ -122,3 +122,23 @@ def project_disables_sessions(git_root: Path) -> bool:
     data = load_json(path)
     sessions = data.get("sessions")
     return isinstance(sessions, dict) and sessions.get("enabled") is False
+
+
+def get_backends(data: Optional[Dict[str, Any]] = None) -> list[str]:
+    """Return the list of active backends (default: ["git"])."""
+    config = data if data is not None else load_user_config(missing_ok=False)
+    sessions = config.get("sessions", {})
+    backends = sessions.get("backends", ["git"])
+    if isinstance(backends, list):
+        return backends
+    return ["git"]
+
+
+def get_s3_config(data: Optional[Dict[str, Any]] = None) -> Optional[Dict[str, Any]]:
+    """Return S3 config dict, or None if not configured."""
+    config = data if data is not None else load_user_config(missing_ok=False)
+    sessions = config.get("sessions", {})
+    s3 = sessions.get("s3")
+    if isinstance(s3, dict) and s3.get("bucket"):
+        return s3
+    return None
