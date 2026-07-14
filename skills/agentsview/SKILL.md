@@ -6,10 +6,10 @@ description: >-
   transcripts or tool calls, recover prior decisions, report AgentsView health,
   usage, activity, or stats, or check whether local AgentsView is available.
   Also use when the user asks what happened in a past agent session, invokes
-  agentsview directly, or wants to try or verify the local integration. This
-  skill retrieves evidence; it does not evaluate session quality or recommend
-  process improvements.
-compatibility: Requires a local agentsview CLI with the session command group.
+  agentsview directly, wants to install or upgrade its CLI, or wants to try or
+  verify the local container integration. This skill retrieves evidence; it
+  does not evaluate session quality or recommend process improvements.
+compatibility: Requires Python 3 and a container-backed AgentsView service.
 ---
 
 <cli_setup>
@@ -21,21 +21,28 @@ python scripts/preflight.py --json
 ```
 
 Consume the complete JSON output. Do not pipe it through `head`, `tail`, or
-`grep`. If `available` or `working` is false, report the supplied remediation
-and stop. Record the returned absolute `binary` as `AGENTSVIEW_BIN` and invoke
-every workflow command as `"$AGENTSVIEW_BIN"`; a successful explicit or common
-path lookup does not imply that `agentsview` is on `PATH`. The preflight honors
-an `AGENTSVIEW_BIN` environment override.
+`grep`. If `available` is false, load `references/setup.md` when the user asked
+for setup or installation; otherwise report the supplied remediation and stop.
+If `working` is false for another reason, report the remediation and stop.
+
+Record the returned absolute `binary` as `AGENTSVIEW_BIN`, `server_url` as
+`AGENTSVIEW_SERVER_URL`, and an optional `server_token_file`. A successful
+explicit or common path lookup does not imply that `agentsview` is on `PATH`.
+The preflight honors matching environment overrides.
 
 In each new shell invocation, assign the returned value before the command:
 
 ```bash
 AGENTSVIEW_BIN='<absolute binary value from preflight>'
-"$AGENTSVIEW_BIN" projects --json
+AGENTSVIEW_SERVER_URL='<container URL from preflight>'
+export AGENTSVIEW_NO_DAEMON=1
+AGENTSVIEW_SERVER_ARGS=(--server "$AGENTSVIEW_SERVER_URL")
+"$AGENTSVIEW_BIN" session list "${AGENTSVIEW_SERVER_ARGS[@]}" --limit 1 --json
 ```
 
-The preflight deliberately does not inspect or start the daemon; normal read
-commands may start it as part of AgentsView's standard transport behavior.
+If `server_token_file` is present, append `--server-token-file <path>` to
+`AGENTSVIEW_SERVER_ARGS` without reading the token into context. Host daemon
+startup stays disabled because the container owns the database and indexing.
 
 </cli_setup>
 
@@ -56,8 +63,17 @@ ground truth about delivery success.
 <principle name="read_only_default">
 Use read commands only. Do not run `prune`, `import`, `update`, PostgreSQL or
 DuckDB writes, secret reveal, or other administrative commands. Ask before an
-explicit `agentsview sync`; use `--full` only when the user specifically agrees
-to a full resync.
+explicit container/session sync; use `--full` only when the user specifically
+agrees to a full resync. Installing or upgrading the host CLI writes outside
+the repository, so run it only after the user agrees.
+</principle>
+
+<principle name="container_authority">
+Treat the container service as the only AgentsView server and data authority.
+Pass the preflight's `--server` arguments to every host `session` command and
+keep `AGENTSVIEW_NO_DAEMON=1`. Run commands that lack upstream `--server`
+support (`projects`, `stats`, `activity`, and `usage daily`) through the
+existing compose service, never against a host database.
 </principle>
 
 <principle name="structured_queries">
@@ -92,11 +108,12 @@ not reproduce unrelated transcript content.
 
 ## What would you like to retrieve?
 
-1. **Status** — check the local CLI, daemon state, and available projects
-2. **Find sessions** — list and filter sessions by metadata or signals
-3. **Inspect a session** — read metadata, messages, tool calls, health, or usage
-4. **Search history** — find past decisions, instructions, errors, or examples
-5. **Report a window** — retrieve factual stats, activity, cost, or token totals
+1. **Setup** — install or upgrade the host CLI and connect it to the container
+2. **Status** — check the host CLI, container endpoint, and available projects
+3. **Find sessions** — list and filter sessions by metadata or signals
+4. **Inspect a session** — read metadata, messages, tool calls, health, or usage
+5. **Search history** — find past decisions, instructions, errors, or examples
+6. **Report a window** — retrieve factual stats, activity, cost, or token totals
 
 If the user's request already identifies one of these intents, route directly
 without repeating the menu. For a bare invocation or an invitation to "try",
@@ -110,11 +127,12 @@ to explore options without running a check.
 
 | Response or intent | Workflow |
 |---|---|
-| 1, "status", "is AgentsView running", "projects" | `references/status.md` |
-| 2, "find", "list", "recent sessions", "filter sessions" | `references/find-sessions.md` |
-| 3, "inspect", "read session", "transcript", "tool calls", session ID | `references/inspect-session.md` |
-| 4, "search", "history", "have we done this", "why did we" | `references/search-history.md` |
-| 5, "stats", "activity", "usage", "cost", "tokens", date range | `references/report-window.md` |
+| 1, "setup", "install CLI", "upgrade CLI", "configure container" | `references/setup.md` |
+| 2, "status", "is AgentsView running", "projects" | `references/status.md` |
+| 3, "find", "list", "recent sessions", "filter sessions" | `references/find-sessions.md` |
+| 4, "inspect", "read session", "transcript", "tool calls", session ID | `references/inspect-session.md` |
+| 5, "search", "history", "have we done this", "why did we" | `references/search-history.md` |
+| 6, "stats", "activity", "usage", "cost", "tokens", date range | `references/report-window.md` |
 
 </routing>
 
@@ -122,7 +140,8 @@ to explore options without running a check.
 
 | Reference | Load when... |
 |---|---|
-| `references/status.md` | Checking CLI/daemon readiness or discovering projects |
+| `references/setup.md` | Installing/upgrading the CLI or connecting it to the container |
+| `references/status.md` | Checking CLI/container readiness or discovering projects |
 | `references/find-sessions.md` | Selecting sessions from metadata, dates, or stored signals |
 | `references/inspect-session.md` | Reading one known session in detail |
 | `references/search-history.md` | Searching content across multiple sessions |
@@ -155,7 +174,8 @@ Show raw JSON or the full command transcript only when the user asks for it.
 - Every transcript claim has a session ID and ordinal evidence.
 - Heuristic fields are attributed to AgentsView and not independently judged.
 - No explicit sync or administrative mutation ran without approval.
+- No host AgentsView daemon was started or used.
 - Missing or unsupported data is stated rather than inferred.
-- Every CLI command uses the absolute binary returned by the preflight.
+- Host session commands use the preflight binary and container server URL.
 
 </success_criteria>
