@@ -71,6 +71,7 @@ def prepare_export(
     sessions_repo: Path,
     username: str | None = None,
     timestamp: str | None = None,
+    project: str | None = None,
 ) -> ExportResult | None:
     """Full export pipeline: validate, build metadata, copy.
 
@@ -81,8 +82,8 @@ def prepare_export(
         return None
 
     user = username or get_username()
-    project = get_project_name(cwd)
-    dst = dest_path(sessions_repo, user, project, session_id)
+    project_name = project if project is not None else get_project_name(cwd)
+    dst = dest_path(sessions_repo, user, project_name, session_id)
 
     verb = "add"
     if dst.exists():
@@ -90,6 +91,6 @@ def prepare_export(
             return None
         verb = "update"
 
-    meta = build_metadata_line(project, user, timestamp)
+    meta = build_metadata_line(project_name, user, timestamp)
     export_transcript(src, dst, meta)
     return ExportResult(dest=dst, verb=verb)
