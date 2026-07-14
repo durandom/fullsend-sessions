@@ -70,7 +70,7 @@ def make_transcript(
     project_name: str = "test-project",
     session_id: str = "abc-123",
     title: str = "Test Session",
-    cwd: str = "/Users/test/myproject",
+    cwd: str | None = "/Users/test/myproject",
 ) -> Path:
     """Create a fake JSONL transcript in the Claude projects dir."""
     project_dir = projects_dir / f"-Users-test-{project_name}"

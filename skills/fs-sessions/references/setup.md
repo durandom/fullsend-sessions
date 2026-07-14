@@ -11,7 +11,7 @@ command -v python3 >/dev/null 2>&1 && echo "python3: ok" || echo "python3: MISSI
 command -v git >/dev/null 2>&1 && echo "git: ok" || echo "git: MISSING"
 ```
 
-If missing, tell the user to install them and stop. Note: `jq` is no longer required — the Python scripts handle JSON natively.
+If missing, tell the user to install them and stop. The Python scripts handle JSON natively, so `jq` is no longer required.
 
 ### 2. Locate the sessions repo
 
@@ -74,26 +74,7 @@ The hook entry to merge:
 }
 ```
 
-Use `jq` to merge. If `hooks.SessionEnd` already exists, check if the fs-sessions hook is already present (search for `export-session` in the command string). If present, skip. If not, append to the array.
-
-```bash
-if jq -e '.hooks.SessionEnd[]?.hooks[]? | select(.command | contains("export-session"))' "$SETTINGS_FILE" >/dev/null 2>&1; then
-  echo "Hook already installed in $SETTINGS_FILE"
-else
-  jq '. * {
-    "hooks": {
-      "SessionEnd": (((.hooks // {}).SessionEnd // []) + [{
-        "matcher": "",
-        "hooks": [{
-          "type": "command",
-          "command": "bash -c '"'"'. ~/.config/fullsend/sessions.env 2>/dev/null && [ -n \"$FULLSEND_SESSIONS_REPO\" ] && [ -f \"$FULLSEND_SESSIONS_REPO/skills/fs-sessions/scripts/export-session\" ] && exec python3 \"$FULLSEND_SESSIONS_REPO/skills/fs-sessions/scripts/export-session\" || true'"'"'"
-        }]
-      }])
-    }
-  }' "$SETTINGS_FILE" > "${SETTINGS_FILE}.tmp" && mv "${SETTINGS_FILE}.tmp" "$SETTINGS_FILE"
-  echo "Hook installed into $SETTINGS_FILE"
-fi
-```
+Merge this entry into the JSON directly. Preserve all existing settings. If `hooks.SessionEnd` already contains a command with `export-session`, skip the update; otherwise append this entry to the existing array. Do not require `jq` just for this edit.
 
 Show the user what changed. Remind them to commit `.claude/settings.json` so teammates get the hook too.
 

@@ -6,8 +6,8 @@ Shared repo for Claude Code session transcripts and fullsend agent run data.
 
 - `sessions/` — shared session transcripts (`<user>_<project>/<session-id>.jsonl`)
 - `skills/fs-sessions/` — agent skill for session management, installable via `npx skills add`
-  - `scripts/export-session.sh` — SessionEnd hook (copies, commits, pushes)
-  - `scripts/fs-sessions.sh` — interactive CLI for manual session sharing
+  - `scripts/export-session` — Python SessionEnd hook (copies, commits, pushes)
+  - `scripts/fs-sessions` — Python interactive CLI for manual session sharing
 - `scripts/` — fullsend run tooling (fetch from GH Actions, import local runs)
 - `justfile` — task runner (`just --list` for available commands)
 
@@ -22,7 +22,7 @@ just up                # fetch + start AgentsView
 
 ## Session flow
 
-SessionEnd hook → `export-session.sh` → copies transcript → commits → pulls → pushes (all best-effort, silent on failure).
+SessionEnd hook → `export-session` → copies transcript → commits → pulls → pushes (all best-effort, silent on failure).
 
 Config: `~/.config/fullsend/sessions.env` defines `FULLSEND_SESSIONS_REPO`.
 Hook: installed per-project in `.claude/settings.json`.

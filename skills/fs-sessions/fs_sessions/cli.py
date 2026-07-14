@@ -53,26 +53,35 @@ def _share_session(
     session: SessionInfo,
     sessions_repo: Path,
     username: str,
-) -> None:
+) -> bool:
     session_id = jsonl.stem
     cwd = session.cwd
     project = Path(cwd).name if cwd else jsonl.parent.name.lstrip("-")
 
     result = prepare_export(
-        str(jsonl), session_id, cwd, sessions_repo, username=username
+        str(jsonl),
+        session_id,
+        cwd,
+        sessions_repo,
+        username=username,
+        project=project,
     )
     if result is None:
         print(f"Unchanged: {username}_{project}/{session_id}.jsonl")
-        return
+        return True
 
-    rel = f"sessions/{username}_{project}/{session_id}.jsonl"
+    rel = result.dest.relative_to(sessions_repo).as_posix()
     print(f"Copied → {rel}")
 
-    add(sessions_repo, rel)
-    commit(
+    if not add(sessions_repo, rel):
+        print(f"error: failed to stage {rel}", file=sys.stderr)
+        return False
+    if not commit(
         sessions_repo,
         f"feat: {result.verb} session {username}/{project}/{session_id}",
-    )
+    ):
+        print("error: failed to commit session", file=sys.stderr)
+        return False
     print("Committed.")
 
     try:
@@ -80,11 +89,16 @@ def _share_session(
     except EOFError:
         answer = "y"
     if not answer or answer.lower().startswith("y"):
-        pull_rebase(sessions_repo)
-        push(sessions_repo)
+        if not pull_rebase(sessions_repo):
+            print("error: failed to pull with rebase", file=sys.stderr)
+            return False
+        if not push(sessions_repo):
+            print("error: failed to push session", file=sys.stderr)
+            return False
         print("Pushed.")
     else:
         print("Skipped push. Run 'git push' in the sessions repo later.")
+    return True
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -116,7 +130,8 @@ def main(argv: list[str] | None = None) -> None:
     username = get_username()
 
     if args.last:
-        _share_session(sessions[0].path, sessions[0], sessions_repo, username)
+        if not _share_session(sessions[0].path, sessions[0], sessions_repo, username):
+            sys.exit(1)
         return
 
     _display_sessions(sessions)
@@ -138,7 +153,8 @@ def main(argv: list[str] | None = None) -> None:
         sys.exit(1)
 
     selected = sessions[choice - 1]
-    _share_session(selected.path, selected, sessions_repo, username)
+    if not _share_session(selected.path, selected, sessions_repo, username):
+        sys.exit(1)
 
 
 def hook_main() -> None:

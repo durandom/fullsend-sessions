@@ -18,7 +18,7 @@ Sessions are auto-exported and pushed on session end via a `SessionEnd` hook in 
 ### How it works
 
 1. **SessionEnd hook** fires when any Claude Code session ends
-2. `export-session.sh` copies the transcript to `sessions/<user>_<project>/`
+2. `export-session` copies the transcript to `sessions/<user>_<project>/`
 3. Commits locally, then pulls and pushes to the shared remote
 4. Teammates pull to see each other's sessions
 
