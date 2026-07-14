@@ -12,6 +12,8 @@ from typing import Any, Dict, List, Optional
 
 from fs_sessions.config import (
     ConfigError,
+    get_backends,
+    get_s3_config,
     get_sessions_config,
     get_sessions_repo,
     get_user_config_path,
@@ -21,7 +23,7 @@ from fs_sessions.config import (
 )
 from fs_sessions.discovery import SessionInfo, discover_sessions
 from fs_sessions.export import prepare_export
-from fs_sessions.git import commit_file, pull_rebase, push
+from fs_sessions.git import commit_files, pull_rebase, push
 from fs_sessions.hook import (
     DEFAULT_SETTINGS,
     HookError,
@@ -54,6 +56,15 @@ def _username() -> str:
 
 def _script_path() -> Path:
     return Path(__file__).resolve().parent.parent / "scripts" / "fs-sessions"
+
+
+def _temp_export_dir() -> Path:
+    """Return a temp directory for S3-only exports (no local git repo)."""
+    import tempfile as _tempfile
+
+    d = Path(_tempfile.mkdtemp(prefix="fs-sessions-"))
+    (d / "sessions").mkdir()
+    return d
 
 
 def _settings(args: argparse.Namespace) -> Path:
@@ -173,6 +184,12 @@ def cmd_hook_uninstall(args: argparse.Namespace) -> int:
     return 0
 
 
+def _emit_hook_notice(message: str) -> None:
+    """Emit the structured user message accepted by SessionEnd hooks."""
+    json.dump({"systemMessage": message}, sys.stdout)
+    sys.stdout.write("\n")
+
+
 def _run_hook() -> int:
     """Run fail-closed and silent so SessionEnd itself can never fail."""
     try:
@@ -188,26 +205,45 @@ def _run_hook() -> int:
         if not decision.allowed:
             return 0
 
+        backends = get_backends(config)
+        username = _username()
         transcript = Path(transcript_value)
         project = Path(decision.context.git_root or cwd).name
-        repo = get_sessions_repo(config)
-        result = prepare_export(transcript, session_id, project, repo, _username())
+
+        use_git = "git" in backends
+        repo = get_sessions_repo(config) if use_git else None
+        dest_dir = repo or _temp_export_dir()
+        result = prepare_export(transcript, session_id, project, dest_dir, username)
         if result is None:
             return 0
-        relative = result.dest.relative_to(repo).as_posix()
-        message = (
-            f"feat: {result.verb} session "
-            f"{result.username}/{result.project}/{session_id}"
-        )
-        if not commit_file(
-            repo,
-            relative,
-            message,
-        ):
-            return 0
-        if not pull_rebase(repo):
-            return 0
-        push(repo)
+
+        uploaded_to = []
+        if use_git and repo:
+            relative_paths = [p.relative_to(repo).as_posix() for p in result.paths]
+            message = (
+                f"feat: {result.verb} session "
+                f"{result.username}/{result.project}/{session_id}"
+            )
+            if commit_files(repo, relative_paths, message):
+                if pull_rebase(repo) and push(repo):
+                    uploaded_to.append("Git")
+
+        if "s3" in backends:
+            from fs_sessions.s3 import upload_session
+
+            s3_config = get_s3_config(config)
+            if s3_config and upload_session(
+                s3_config, result.paths, dest_dir, username, project
+            ):
+                uploaded_to.append("S3")
+
+        if uploaded_to:
+            noun = "file" if len(result.paths) == 1 else "files"
+            destinations = " and ".join(uploaded_to)
+            _emit_hook_notice(
+                f"fs-sessions: exported and uploaded {len(result.paths)} session "
+                f"{noun} to {destinations} for {project}/{session_id}."
+            )
     except Exception:
         return 0
     return 0
@@ -215,21 +251,41 @@ def _run_hook() -> int:
 
 def cmd_status(args: argparse.Namespace) -> int:
     config = load_user_config(missing_ok=False)
-    repo = get_sessions_repo(config)
+    backends = get_backends(config)
     status = hook_status(_settings(args))
-    count = sum(1 for _ in (repo / "sessions").glob("*/*.jsonl"))
     sessions = get_sessions_config(config)
-    payload = {
+
+    lines = []
+    payload: Dict[str, Any] = {
         "config": str(get_user_config_path()),
-        "repo": str(repo),
+        "backends": backends,
         "enabled": sessions.get("enabled", True),
         "policy": validate_policy(sessions.get("policy", {})),
         "hook": status,
-        "session_count": count,
     }
+
+    if "git" in backends:
+        try:
+            repo = get_sessions_repo(config)
+            count = sum(1 for _ in (repo / "sessions").glob("*/*.jsonl"))
+            payload["repo"] = str(repo)
+            payload["session_count"] = count
+            lines.append(f"Git: {repo} ({count} sessions)")
+        except ConfigError:
+            lines.append("Git: not configured")
+
+    if "s3" in backends:
+        s3_config = get_s3_config(config)
+        if s3_config:
+            payload["s3"] = s3_config
+            lines.append(f"S3: s3://{s3_config['bucket']}/")
+        else:
+            lines.append("S3: not configured")
+
     hook_state = "installed" if status["installed"] else "not installed"
-    message = f"Sessions: {count}\nRepo: {repo}\nHook: {hook_state}"
-    _emit(payload, message, args.json)
+    lines.append(f"Backends: {', '.join(backends)}")
+    lines.append(f"Hook: {hook_state}")
+    _emit(payload, "\n".join(lines), args.json)
     return 0
 
 
@@ -270,19 +326,45 @@ def cmd_share(args: argparse.Namespace) -> int:
         transcript = Path(args.transcript).expanduser().resolve()
         cwd = args.cwd
     project = Path(cwd).name if cwd else transcript.parent.name.lstrip("-")
-    repo = get_sessions_repo()
-    result = prepare_export(transcript, transcript.stem, project, repo, _username())
+    username = _username()
+    config = load_user_config(missing_ok=False)
+    backends = get_backends(config)
+
+    use_git = "git" in backends
+    repo = get_sessions_repo(config) if use_git else None
+    dest_dir = repo or _temp_export_dir()
+    result = prepare_export(transcript, transcript.stem, project, dest_dir, username)
     if result is None:
         _emit({"changed": False}, "Session unchanged", args.json)
         return 0
-    relative = result.dest.relative_to(repo).as_posix()
-    if not commit_file(
-        repo,
-        relative,
-        f"feat: {result.verb} session {result.username}/{project}/{transcript.stem}",
-    ):
-        raise ConfigError(f"failed to commit {relative}")
-    _emit({"changed": True, "path": relative}, f"Committed {relative}", args.json)
+
+    committed = False
+    if use_git and repo:
+        relative_paths = [p.relative_to(repo).as_posix() for p in result.paths]
+        msg = (
+            f"feat: {result.verb} session {result.username}/{project}/{transcript.stem}"
+        )
+        committed = commit_files(repo, relative_paths, msg)
+
+    uploaded = False
+    if "s3" in backends:
+        from fs_sessions.s3 import upload_session
+
+        s3_config = get_s3_config(config)
+        if s3_config:
+            uploaded = upload_session(
+                s3_config, result.paths, dest_dir, username, project
+            )
+
+    parts = []
+    if committed:
+        parts.append(f"committed {len(result.paths)} file(s)")
+    if uploaded:
+        parts.append("uploaded to S3")
+    summary = ", ".join(parts) if parts else "exported"
+
+    payload = {"changed": True, "git": committed, "s3": uploaded}
+    _emit(payload, summary.capitalize(), args.json)
     return 0
 
 

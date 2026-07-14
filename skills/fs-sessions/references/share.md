@@ -20,3 +20,16 @@ Or export a known transcript:
 ```
 
 Explicit sharing is a deliberate user action and does not evaluate the automatic-hook policy. It commits only the exported transcript and leaves unrelated staged files untouched. Push separately after reviewing when required.
+
+Each export preserves the complete Claude session family:
+
+```text
+sessions/<user>_<project>/
+  <session-id>.jsonl
+  <session-id>/
+    subagents/**
+    tool-results/**
+    <other regular companion files>
+```
+
+The main transcript receives the synthetic AgentsView metadata line. Companion files are copied byte-for-byte, including binary files; symlinks are skipped so a session directory cannot pull unrelated files into the shared repository.
