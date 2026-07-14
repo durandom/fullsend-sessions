@@ -22,7 +22,7 @@ Setup creates `~/.config/fullsend/sessions.env` and installs a `SessionEnd` hook
 ## How it works
 
 ```
-Session ends → SessionEnd hook fires → export-session.sh
+Session ends → SessionEnd hook fires → export-session
   → copies transcript to sessions/<user>_<project>/<session-id>.jsonl
   → git commit
   → git pull --rebase && git push (best-effort, silent on failure)
@@ -35,9 +35,9 @@ Sessions are stored as JSONL files matching the AgentsView Claude discovery layo
 Share sessions interactively without the hook:
 
 ```bash
-./skills/fs-sessions/scripts/fs-sessions.sh              # pick from recent sessions
-./skills/fs-sessions/scripts/fs-sessions.sh --last       # share the most recent session
-./skills/fs-sessions/scripts/fs-sessions.sh --list       # list recent sessions
+./skills/fs-sessions/scripts/fs-sessions              # pick from recent sessions
+./skills/fs-sessions/scripts/fs-sessions --last       # share the most recent session
+./skills/fs-sessions/scripts/fs-sessions --list       # list recent sessions
 ```
 
 ## AgentsView
@@ -92,13 +92,15 @@ scripts/
 skills/fs-sessions/                   # agent skill (npx skills add)
   SKILL.md                            # skill definition
   scripts/
-    export-session.sh                 # SessionEnd hook script
-    fs-sessions.sh                    # interactive CLI
+    export-session                    # Python SessionEnd hook script
+    fs-sessions                       # Python interactive CLI
+    export-session.sh                 # legacy Bash hook
+    fs-sessions.sh                    # legacy Bash CLI
   references/                         # skill command references
 ```
 
 ## Prerequisites
 
-- `jq`, `git`
+- Python 3.10+ and `git`
 - `podman` (for AgentsView)
 - `gh` (for fetching fullsend runs)
