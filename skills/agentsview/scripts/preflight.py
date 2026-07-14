@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -12,12 +13,31 @@ from pathlib import Path
 
 
 def resolve_binary(requested: str) -> str | None:
-    """Resolve an explicit path/name or the default agentsview executable."""
-    candidate = requested or "agentsview"
-    if Path(candidate).parent != Path("."):
+    """Resolve an explicit path/name, environment override, or common install."""
+    candidates = [requested] if requested else []
+    if not requested and os.environ.get("AGENTSVIEW_BIN"):
+        candidates.append(os.environ["AGENTSVIEW_BIN"])
+    if not requested:
+        candidates.extend(
+            [
+                "agentsview",
+                "~/.local/bin/agentsview",
+                "~/bin/agentsview",
+                "/opt/homebrew/bin/agentsview",
+                "/usr/local/bin/agentsview",
+            ]
+        )
+
+    for candidate in candidates:
+        if not candidate:
+            continue
+        resolved = shutil.which(candidate)
+        if resolved:
+            return str(Path(resolved).resolve())
         path = Path(candidate).expanduser()
-        return str(path.resolve()) if path.is_file() else None
-    return shutil.which(candidate)
+        if path.is_file() and os.access(path, os.X_OK):
+            return str(path.resolve())
+    return None
 
 
 def run_probe(binary: str, *args: str) -> dict[str, object]:
@@ -55,8 +75,8 @@ def inspect(binary_name: str = "") -> dict[str, object]:
             "session_api": False,
             "daemon_status": None,
             "remediation": (
-                f"AgentsView CLI '{name}' was not found. Make the local agentsview "
-                "binary available on PATH, then rerun the request."
+                f"AgentsView CLI '{name}' was not found. Put the executable on PATH "
+                "or set AGENTSVIEW_BIN to its absolute path, then rerun the request."
             ),
         }
 

@@ -6,7 +6,10 @@ when selection depends on transcript content.
 
 ## Start Narrow
 
-Translate stated constraints into `agentsview session list` flags. Useful flags
+Translate stated constraints into `session list` flags. Resolve user-facing
+repository names against `"$AGENTSVIEW_BIN" projects --json` before applying a
+`--project` filter; indexed project names may normalize punctuation such as
+hyphens to underscores. Useful flags
 include:
 
 | Intent | Flag |
@@ -26,7 +29,7 @@ automated, and child sessions are excluded unless their include flags are set.
 Example:
 
 ```bash
-agentsview session list \
+"$AGENTSVIEW_BIN" session list \
   --since 14d \
   --project example-project \
   --min-user-messages 2 \
@@ -51,6 +54,8 @@ agentsview session list \
 - Present the smallest useful candidate set with full session IDs.
 - Include project, agent, time, message count, branch, and title when present.
 - Label health grade and outcome as AgentsView heuristics when shown.
+- Mark `termination_status: tool_call_pending`, pending signals, or a missing
+  end time as a live/non-final snapshot.
 - Do not infer why a session matched from its title alone.
 - When one candidate clearly matches, continue with `inspect-session.md` only if
   the user also asked to read its contents.
