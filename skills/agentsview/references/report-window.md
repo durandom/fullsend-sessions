@@ -7,15 +7,25 @@ it does not assess productivity, effectiveness, or session quality.
 
 | User asks for | Command |
 |---|---|
-| workspace/session shape, tools, models, outcomes | `"$AGENTSVIEW_BIN" stats` |
-| active/idle minutes, concurrency, per-session activity | `"$AGENTSVIEW_BIN" activity report` |
-| daily tokens and cost | `"$AGENTSVIEW_BIN" usage daily` |
-| one session's tokens and cost | `"$AGENTSVIEW_BIN" session usage <id>` |
+| workspace/session shape, tools, models, outcomes | container `agentsview stats` |
+| active/idle minutes, concurrency, per-session activity | container `agentsview activity report` |
+| daily tokens and cost | container `agentsview usage daily` |
+| one session's tokens and cost | host `session usage` via `inspect-session.md` |
+
+The aggregate commands do not currently support host `--server`. Run them via
+the existing compose service so they read the container-owned database. Use
+`podman compose exec -T`; substitute `docker compose` when that is the available
+frontend.
+
+Before running a report, check the matching `container_cli.capabilities` field
+from preflight. If it is false, report the host/container version mismatch and
+offer a container image update; do not guess older flags, query a host database,
+pull an image, or restart the container without approval.
 
 ## Workspace Stats
 
 ```bash
-"$AGENTSVIEW_BIN" stats \
+podman compose exec -T agentsview agentsview stats \
   --since 28d \
   --include-project example-project \
   --timezone Europe/Berlin \
@@ -40,11 +50,12 @@ not top-level scalar fields.
 ## Activity
 
 ```bash
-"$AGENTSVIEW_BIN" activity report \
+podman compose exec -T agentsview agentsview activity report \
   --preset week \
   --date 2026-07-14 \
   --timezone Europe/Berlin \
   --project example-project \
+  --no-sync \
   --json
 ```
 
@@ -59,9 +70,10 @@ label the report as an in-progress window.
 ## Daily Usage
 
 ```bash
-"$AGENTSVIEW_BIN" usage daily \
+podman compose exec -T agentsview agentsview usage daily \
   --since 28d \
   --timezone Europe/Berlin \
+  --no-sync \
   --json
 ```
 

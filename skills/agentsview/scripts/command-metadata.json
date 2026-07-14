@@ -1,6 +1,10 @@
 {
+  "setup": {
+    "description": "Install or upgrade the local AgentsView CLI and connect it safely to the container-backed server without starting a host daemon.",
+    "argumentHint": "[install|upgrade] [optional version or server URL]"
+  },
   "status": {
-    "description": "Check whether the local AgentsView CLI works, inspect daemon status, and list indexed projects.",
+    "description": "Check whether the host AgentsView CLI can reach the container service and list its indexed projects.",
     "argumentHint": ""
   },
   "find": {
