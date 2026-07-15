@@ -193,87 +193,27 @@ Manual commands are available when needed:
 "$FS_SESSIONS" status
 ```
 
-## Start AgentsView
+## Start and use AgentsView
 
-You can run AgentsView locally against the shared S3 bucket without cloning
-this repository. You need Podman and the same read credentials used by
-`fs-sessions`.
+Use the `agentsview` skill for the complete user workflow. It reuses the S3
+configuration and credential environment already verified by `fs-sessions`,
+keeps generated runtime secrets outside Git, starts the container on loopback,
+installs its verified host client when needed, and checks the web UI.
 
-Discover the uploaded machine roots:
+Start a local S3-backed service:
 
-```bash
-"$FS_SESSIONS" s3 check
-"$FS_SESSIONS" s3 roots
-```
+> Use agentsview to set up and start a local S3-backed AgentsView service from
+> my existing fs-sessions configuration. Keep its runtime configuration outside
+> Git, bind it to loopback, verify the web UI, and report the URL and indexed
+> session count.
 
-Create a private data directory outside any Git repository:
+Check the web UI later without changing anything:
 
-```bash
-export AGENTSVIEW_DATA="$HOME/.local/share/fullsend-agentsview"
-install -d -m 700 "$AGENTSVIEW_DATA"
-${EDITOR:-vi} "$AGENTSVIEW_DATA/config.toml"
-```
+> Use agentsview to verify that the local container and web UI are healthy.
+> Report the exact URL, CLI and container versions, available projects, and
+> session count. Do not sync or modify the archive.
 
-Add every returned root to `config.toml`:
-
-```toml
-claude_project_dirs = [
-  "s3://team-agent-sessions/alice-laptop/raw/claude",
-  "s3://team-agent-sessions/bob-workstation/raw/claude",
-]
-```
-
-Protect the configuration and start AgentsView on loopback:
-
-```bash
-chmod 600 "$AGENTSVIEW_DATA/config.toml"
-
-podman run -d --name agentsview --pull=always \
-  -p 127.0.0.1:8081:8080 \
-  -e AWS_ACCESS_KEY_ID \
-  -e AWS_SECRET_ACCESS_KEY \
-  -e AWS_SESSION_TOKEN \
-  -e AWS_REGION="$S3_REGION" \
-  -e AWS_S3_ENDPOINT \
-  -v "$AGENTSVIEW_DATA:/data" \
-  ghcr.io/kenn-io/agentsview:latest \
-  --host 0.0.0.0 \
-  --no-browser \
-  --public-url http://127.0.0.1:8081
-```
-
-Open <http://127.0.0.1:8081>. Stop or restart the same container with:
-
-```bash
-podman stop agentsview
-podman start agentsview
-podman logs -f agentsview
-```
-
-The bucket remains the source of truth. `$AGENTSVIEW_DATA` contains only the
-runtime configuration and a replaceable derived index. AgentsView may add an
-`auth_token` and `cursor_secret` to `config.toml`; keep that file outside Git.
-
-See [Hosting AgentsView](docs/agentsview-hosting.md) when exposing the service
-to other users over a network.
-
-## Query AgentsView with the skill
-
-Make the local URL available to the shell that starts your agent:
-
-```bash
-export AGENTSVIEW_SERVER_URL=http://127.0.0.1:8081
-```
-
-For a shared authenticated service, use the URL and token file provided by its
-operator:
-
-```bash
-export AGENTSVIEW_SERVER_URL=https://agentsview.example.com
-export AGENTSVIEW_SERVER_TOKEN_FILE="$HOME/.config/agentsview/token"
-```
-
-Then ask Claude Code or Codex naturally:
+Query the indexed sessions:
 
 Check readiness:
 
@@ -294,9 +234,10 @@ Search historical evidence:
 > Git and cite the matching evidence.
 
 The skill is read-only by default and connects its host CLI to the team
-container; it does not start a second AgentsView database. If the host CLI is
-missing, the skill explains the verified installation and asks before writing
-it to `~/.local/bin/agentsview`.
+container; it does not start a second database. It asks before installing the
+host CLI or changing container state. See
+[Hosting AgentsView](docs/agentsview-hosting.md) only when exposing the service
+to other users over a network.
 
 ## Update
 
