@@ -19,13 +19,13 @@
     "description": "List local Claude sessions or explicitly upload one complete session family to S3.",
     "argumentHint": "[--last | transcript path]"
   },
-  "sync": {
-    "description": "Synchronize an explicitly configured legacy Git transcript backend; S3 needs no push or pull.",
-    "argumentHint": "[legacy push|pull]"
+  "fullsend": {
+    "description": "Download Fullsend GitHub Actions artifacts on demand, convert them, and upload sessions and provenance to S3.",
+    "argumentHint": "[--since 7d | --run-id ID | --cache-dir PATH]"
   },
   "s3": {
     "description": "Validate S3 bucket access and discover AgentsView Claude roots from uploaded machine prefixes.",
-    "argumentHint": "[check|roots]"
+    "argumentHint": "[check|roots|agentsview-config]"
   },
   "view": {
     "description": "Start, stop, or rebuild AgentsView for shared team session transcripts.",

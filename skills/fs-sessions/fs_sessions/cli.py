@@ -14,20 +14,17 @@ from typing import Any, Dict, List, Optional
 
 from fs_sessions.config import (
     ConfigError,
-    get_backends,
     get_machine,
     get_s3_config,
     get_sessions_config,
-    get_sessions_repo,
     get_user_config_path,
     initialize_s3_sessions_config,
-    initialize_sessions_config,
     load_user_config,
     save_user_config,
 )
 from fs_sessions.discovery import SessionInfo, discover_sessions
 from fs_sessions.export import prepare_export
-from fs_sessions.git import commit_files, pull_rebase, push
+from fs_sessions.fullsend import FullsendError
 from fs_sessions.hook import (
     DEFAULT_SETTINGS,
     HookError,
@@ -64,11 +61,8 @@ def _script_path() -> Path:
 
 
 @contextmanager
-def _export_dir(repo: Optional[Path]):
-    """Yield the Git repo or a self-cleaning staging directory for S3."""
-    if repo is not None:
-        yield repo
-        return
+def _export_dir():
+    """Yield a self-cleaning staging directory for an S3 upload."""
     with TemporaryDirectory(prefix="fs-sessions-") as temp_dir:
         destination = Path(temp_dir)
         (destination / "sessions").mkdir()
@@ -84,35 +78,28 @@ def _settings(args: argparse.Namespace) -> Path:
 
 
 def cmd_config_init(args: argparse.Namespace) -> int:
-    if args.backend == "git":
-        if not args.repo:
-            raise ConfigError("--repo is required for the legacy Git backend")
-        data = initialize_sessions_config(Path(args.repo), args.default)
-    else:
-        if args.repo:
-            raise ConfigError("--repo is valid only with --backend git")
-        bucket = args.bucket or os.environ.get("S3_BUCKET", "")
-        region = (
-            args.region
-            or os.environ.get("S3_REGION")
-            or os.environ.get("AWS_REGION")
-            or os.environ.get("AWS_DEFAULT_REGION", "")
-        )
-        machine = args.machine or os.environ.get("FS_SESSIONS_MACHINE") or _username()
-        data = initialize_s3_sessions_config(
-            bucket=bucket,
-            region=region,
-            machine=machine,
-            default=args.default,
-            profile=args.profile or os.environ.get("AWS_PROFILE"),
-            endpoint_url=args.endpoint_url or os.environ.get("AWS_S3_ENDPOINT"),
-            prefix=args.prefix,
-        )
+    bucket = args.bucket or os.environ.get("S3_BUCKET", "")
+    region = (
+        args.region
+        or os.environ.get("S3_REGION")
+        or os.environ.get("AWS_REGION")
+        or os.environ.get("AWS_DEFAULT_REGION", "")
+    )
+    machine = args.machine or os.environ.get("FS_SESSIONS_MACHINE") or _username()
+    data = initialize_s3_sessions_config(
+        bucket=bucket,
+        region=region,
+        machine=machine,
+        default=args.default,
+        profile=args.profile or os.environ.get("AWS_PROFILE"),
+        endpoint_url=args.endpoint_url or os.environ.get("AWS_S3_ENDPOINT"),
+        prefix=args.prefix,
+    )
     _emit(
         {
             "success": True,
             "config": str(get_user_config_path()),
-            "backends": get_backends(data),
+            "storage": "s3",
             "sessions": data["sessions"],
         },
         f"Initialized session config: {get_user_config_path()}",
@@ -123,14 +110,11 @@ def cmd_config_init(args: argparse.Namespace) -> int:
 
 def cmd_config_show(args: argparse.Namespace) -> int:
     data = load_user_config(missing_ok=False)
-    backends = get_backends(data)
     payload = {
         "config": str(get_user_config_path()),
-        "backends": backends,
+        "storage": "s3",
         "sessions": get_sessions_config(data),
     }
-    if "git" in backends:
-        payload["repo"] = str(get_sessions_repo(data))
     _emit(payload, json.dumps(payload, indent=2), args.json)
     return 0
 
@@ -158,6 +142,24 @@ def cmd_s3_roots(args: argparse.Namespace) -> int:
     payload = {"count": len(roots), "roots": roots}
     _emit(payload, "\n".join(roots) if roots else "No Claude S3 roots found", args.json)
     return 0 if roots else 1
+
+
+def cmd_s3_agentsview_config(args: argparse.Namespace) -> int:
+    from fs_sessions.s3 import write_agentsview_config
+
+    config = load_user_config(missing_ok=False)
+    s3_config = get_s3_config(config)
+    if not s3_config:
+        raise ConfigError("S3 is not configured; run 'config init' first")
+    payload = write_agentsview_config(
+        s3_config, Path(args.data_dir).expanduser().resolve()
+    )
+    _emit(
+        payload,
+        f"Updated {payload['config']} with {payload['count']} S3 roots",
+        args.json,
+    )
+    return 0
 
 
 def cmd_policy_check(args: argparse.Namespace) -> int:
@@ -265,44 +267,25 @@ def _run_hook() -> int:
         if not decision.allowed:
             return 0
 
-        backends = get_backends(config)
         username = get_machine(config) or _username()
         transcript = Path(transcript_value)
         project = Path(decision.context.git_root or cwd).name
 
-        use_git = "git" in backends
-        repo = get_sessions_repo(config) if use_git else None
-        with _export_dir(repo) as dest_dir:
+        with _export_dir() as dest_dir:
             result = prepare_export(transcript, session_id, project, dest_dir, username)
             if result is None:
                 return 0
 
-            uploaded_to = []
-            if use_git and repo:
-                relative_paths = [p.relative_to(repo).as_posix() for p in result.paths]
-                message = (
-                    f"feat: {result.verb} session "
-                    f"{result.username}/{result.project}/{session_id}"
-                )
-                if commit_files(repo, relative_paths, message):
-                    if pull_rebase(repo) and push(repo):
-                        uploaded_to.append("Git")
+            from fs_sessions.s3 import upload_session
 
-            if "s3" in backends:
-                from fs_sessions.s3 import upload_session
-
-                s3_config = get_s3_config(config)
-                if s3_config and upload_session(
-                    s3_config, result.paths, dest_dir, username, project
-                ):
-                    uploaded_to.append("S3")
-
-            if uploaded_to:
+            s3_config = get_s3_config(config)
+            if s3_config and upload_session(
+                s3_config, result.paths, dest_dir, username, project
+            ):
                 noun = "file" if len(result.paths) == 1 else "files"
-                destinations = " and ".join(uploaded_to)
                 _emit_hook_notice(
                     f"fs-sessions: exported and uploaded {len(result.paths)} session "
-                    f"{noun} to {destinations} for {project}/{session_id}."
+                    f"{noun} to S3 for {project}/{session_id}."
                 )
     except Exception:
         return 0
@@ -311,40 +294,28 @@ def _run_hook() -> int:
 
 def cmd_status(args: argparse.Namespace) -> int:
     config = load_user_config(missing_ok=False)
-    backends = get_backends(config)
     status = hook_status(_settings(args))
     sessions = get_sessions_config(config)
 
     lines = []
     payload: Dict[str, Any] = {
         "config": str(get_user_config_path()),
-        "backends": backends,
+        "storage": "s3",
         "machine": get_machine(config),
         "enabled": sessions.get("enabled", True),
         "policy": validate_policy(sessions.get("policy", {})),
         "hook": status,
     }
 
-    if "git" in backends:
-        try:
-            repo = get_sessions_repo(config)
-            count = sum(1 for _ in (repo / "sessions").glob("*/*.jsonl"))
-            payload["repo"] = str(repo)
-            payload["session_count"] = count
-            lines.append(f"Git: {repo} ({count} sessions)")
-        except ConfigError:
-            lines.append("Git: not configured")
-
-    if "s3" in backends:
-        s3_config = get_s3_config(config)
-        if s3_config:
-            payload["s3"] = s3_config
-            lines.append(f"S3: s3://{s3_config['bucket']}/")
-        else:
-            lines.append("S3: not configured")
+    s3_config = get_s3_config(config)
+    if s3_config:
+        payload["s3"] = s3_config
+        lines.append(f"S3: s3://{s3_config['bucket']}/")
+    else:
+        lines.append("S3: not configured")
 
     hook_state = "installed" if status["installed"] else "not installed"
-    lines.append(f"Backends: {', '.join(backends)}")
+    lines.append("Storage: S3")
     lines.append(f"Hook: {hook_state}")
     _emit(payload, "\n".join(lines), args.json)
     return 0
@@ -388,12 +359,8 @@ def cmd_share(args: argparse.Namespace) -> int:
         cwd = args.cwd
     project = Path(cwd).name if cwd else transcript.parent.name.lstrip("-")
     config = load_user_config(missing_ok=False)
-    backends = get_backends(config)
     username = get_machine(config) or _username()
-
-    use_git = "git" in backends
-    repo = get_sessions_repo(config) if use_git else None
-    with _export_dir(repo) as dest_dir:
+    with _export_dir() as dest_dir:
         result = prepare_export(
             transcript, transcript.stem, project, dest_dir, username
         )
@@ -401,37 +368,88 @@ def cmd_share(args: argparse.Namespace) -> int:
             _emit({"changed": False}, "Session unchanged", args.json)
             return 0
 
-        committed = False
-        if use_git and repo:
-            relative_paths = [p.relative_to(repo).as_posix() for p in result.paths]
-            msg = (
-                f"feat: {result.verb} session "
-                f"{result.username}/{project}/{transcript.stem}"
-            )
-            committed = commit_files(repo, relative_paths, msg)
+        from fs_sessions.s3 import upload_session
 
-        uploaded = False
-        if "s3" in backends:
-            from fs_sessions.s3 import upload_session
-
-            s3_config = get_s3_config(config)
-            if s3_config:
-                uploaded = upload_session(
-                    s3_config, result.paths, dest_dir, username, project
-                )
-
-        results = {"git": committed, "s3": uploaded}
-        selected_ok = all(results[backend] for backend in backends)
-        parts = []
-        if committed:
-            parts.append(f"committed {len(result.paths)} file(s)")
-        if uploaded:
-            parts.append("uploaded to S3")
-        summary = ", ".join(parts) if parts else "no backend accepted the export"
-
-        payload = {"changed": True, **results, "success": selected_ok}
+        s3_config = get_s3_config(config)
+        uploaded = bool(
+            s3_config
+            and upload_session(s3_config, result.paths, dest_dir, username, project)
+        )
+        summary = "Uploaded to S3" if uploaded else "S3 rejected the export"
+        payload = {"changed": True, "s3": uploaded, "success": uploaded}
         _emit(payload, summary.capitalize(), args.json)
-        return 0 if selected_ok else 1
+        return 0 if uploaded else 1
+
+
+def _since_days(value: str) -> int:
+    normalized = value.removesuffix("d")
+    try:
+        days = int(normalized)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("expected a day count such as 7d") from exc
+    if days < 0:
+        raise argparse.ArgumentTypeError("day count must be non-negative")
+    return days
+
+
+def cmd_fullsend_import(args: argparse.Namespace) -> int:
+    from fs_sessions.fullsend import (
+        DEFAULT_ARTIFACT_NAMES,
+        DEFAULT_REPOS,
+        GitHubClient,
+        cached_artifact_inputs,
+        import_artifacts,
+        import_cached_artifacts,
+        since_days,
+    )
+
+    config = load_user_config(missing_ok=False)
+    s3_config = get_s3_config(config)
+    if not s3_config:
+        raise ConfigError("S3 is not configured; run 'config init' first")
+    if args.cache_dir:
+        cache_dir = Path(args.cache_dir).expanduser().resolve()
+        if not cache_dir.is_dir():
+            raise FullsendError(f"artifact cache does not exist: {cache_dir}")
+        inputs = cached_artifact_inputs(cache_dir)
+        summary = import_cached_artifacts(
+            s3_config,
+            inputs,
+            dry_run=args.dry_run,
+            force=args.force,
+        )
+    else:
+        client = GitHubClient()
+        cutoff = None if args.all or args.run_id else since_days(args.since)
+        artifacts = []
+        for repo in args.repo or DEFAULT_REPOS:
+            artifacts.extend(
+                client.list_artifacts(
+                    repo,
+                    cutoff,
+                    args.artifact_name or DEFAULT_ARTIFACT_NAMES,
+                    args.run_id,
+                )
+            )
+        summary = import_artifacts(
+            s3_config,
+            artifacts,
+            client,
+            dry_run=args.dry_run,
+            force=args.force,
+        )
+    payload = summary.to_dict()
+    payload["dry_run"] = args.dry_run
+    _emit(
+        payload,
+        (
+            f"Fullsend: {summary.imported} imported, {summary.skipped} skipped, "
+            f"{summary.failed} failed; {summary.sessions} sessions and "
+            f"{summary.subagents} subagents"
+        ),
+        args.json,
+    )
+    return 0 if summary.failed == 0 else 1
 
 
 def _add_rule_parser(parent: argparse._SubParsersAction, action: str) -> None:
@@ -460,22 +478,19 @@ def create_parser() -> argparse.ArgumentParser:
     config = sub.add_parser("config", help="Manage global session configuration")
     config_sub = config.add_subparsers(dest="config_command", required=True)
     config_init = config_sub.add_parser(
-        "init", help="Initialize S3-first config without replacing unrelated keys"
-    )
-    config_init.add_argument(
-        "--backend", choices=["s3", "git"], default="s3", help="Storage backend"
+        "init", help="Initialize S3 storage without replacing unrelated keys"
     )
     config_init.add_argument("--bucket", help="S3 bucket (default: S3_BUCKET)")
     config_init.add_argument(
         "--region", help="S3 region (default: S3_REGION or AWS_REGION)"
     )
     config_init.add_argument(
-        "--machine", help="Stable AgentsView machine name (default: Git user name)"
+        "--machine",
+        help="Stable user identity shown as the AgentsView machine",
     )
     config_init.add_argument("--profile", help="Optional AWS profile for boto3")
     config_init.add_argument("--endpoint-url", help="Optional S3-compatible endpoint")
     config_init.add_argument("--prefix", help="Optional bucket key prefix")
-    config_init.add_argument("--repo", help="Shared repository for --backend git")
     config_init.add_argument("--default", choices=["allow", "deny"], default="deny")
     config_init.set_defaults(func=cmd_config_init)
     config_show = config_sub.add_parser(
@@ -491,6 +506,16 @@ def create_parser() -> argparse.ArgumentParser:
         "roots", help="Discover AgentsView Claude roots from S3 keys"
     )
     s3_roots.set_defaults(func=cmd_s3_roots)
+    s3_agentsview = s3_sub.add_parser(
+        "agentsview-config",
+        help="Update Claude roots in a private AgentsView runtime config",
+    )
+    s3_agentsview.add_argument(
+        "--data-dir",
+        required=True,
+        help="Private AgentsView data directory outside Git",
+    )
+    s3_agentsview.set_defaults(func=cmd_s3_agentsview_config)
 
     policy = sub.add_parser("policy", help="Manage ordered repository allow/deny rules")
     policy_sub = policy.add_subparsers(dest="policy_command", required=True)
@@ -534,6 +559,39 @@ def create_parser() -> argparse.ArgumentParser:
     source.add_argument("--transcript")
     share.add_argument("--cwd", help="Original session working directory")
     share.set_defaults(func=cmd_share)
+
+    fullsend = sub.add_parser(
+        "fullsend", help="Import Fullsend GitHub Actions sessions into S3"
+    )
+    fullsend_sub = fullsend.add_subparsers(dest="fullsend_command", required=True)
+    fullsend_import = fullsend_sub.add_parser(
+        "import", help="Download, convert, and upload Fullsend artifacts"
+    )
+    fullsend_import.add_argument(
+        "--repo", action="append", help="GitHub owner/repository (repeatable)"
+    )
+    fullsend_import.add_argument(
+        "--artifact-name",
+        action="append",
+        help="Exact GitHub artifact name (repeatable)",
+    )
+    fullsend_import.add_argument("--run-id", help="Import one workflow run")
+    fullsend_import.add_argument(
+        "--since", type=_since_days, default=7, help="Recent days to scan (default: 7d)"
+    )
+    fullsend_import.add_argument(
+        "--all", action="store_true", help="Scan all unexpired artifacts"
+    )
+    fullsend_import.add_argument(
+        "--cache-dir", help="Import an old rhdh-fullsend artifact cache"
+    )
+    fullsend_import.add_argument(
+        "--dry-run", action="store_true", help="Fetch and convert without uploading"
+    )
+    fullsend_import.add_argument(
+        "--force", action="store_true", help="Reconvert artifacts with manifests"
+    )
+    fullsend_import.set_defaults(func=cmd_fullsend_import)
     return parser
 
 
@@ -544,7 +602,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         return _run_hook()
     try:
         return args.func(args)
-    except (ConfigError, HookError, S3Error, OSError) as exc:
+    except (ConfigError, FullsendError, HookError, S3Error, OSError) as exc:
         if args.json or not sys.stdout.isatty():
             json.dump({"success": False, "error": str(exc)}, sys.stdout)
             sys.stdout.write("\n")

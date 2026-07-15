@@ -101,7 +101,7 @@ def initialize_s3_sessions_config(
     endpoint_url: Optional[str] = None,
     prefix: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """Initialize S3 as the sole default backend without storing credentials."""
+    """Initialize the sole S3 storage backend without storing credentials."""
     bucket = bucket.strip()
     region = region.strip()
     if not bucket:
@@ -112,7 +112,7 @@ def initialize_s3_sessions_config(
     data = load_user_config()
     sessions = _sessions_object(data)
     _initialize_policy(sessions, default)
-    sessions["backends"] = ["s3"]
+    sessions.pop("backends", None)
     sessions["machine"] = validate_machine(machine)
     s3: Dict[str, Any] = {"bucket": bucket, "region": region}
     for key, value in (
@@ -123,24 +123,11 @@ def initialize_s3_sessions_config(
         if value:
             s3[key] = value
     sessions["s3"] = s3
-    save_user_config(data)
-    return data
-
-
-def initialize_sessions_config(repo: Path, default: str = "deny") -> Dict[str, Any]:
-    """Initialize the explicit legacy Git backend."""
-    repo = repo.expanduser().resolve()
-    if not repo.is_dir():
-        raise ConfigError(f"sessions repository does not exist: {repo}")
-
-    data = load_user_config()
-    repos = data.setdefault("repos", {})
-    if not isinstance(repos, dict):
-        raise ConfigError("config key 'repos' must be an object")
-    repos["sessions"] = str(repo)
-    sessions = _sessions_object(data)
-    _initialize_policy(sessions, default)
-    sessions["backends"] = ["git"]
+    repos = data.get("repos")
+    if isinstance(repos, dict):
+        repos.pop("sessions", None)
+        if not repos:
+            data.pop("repos")
     save_user_config(data)
     return data
 
@@ -151,18 +138,6 @@ def get_sessions_config(data: Optional[Dict[str, Any]] = None) -> Dict[str, Any]
     if not isinstance(sessions, dict):
         raise ConfigError("missing config object: sessions")
     return sessions
-
-
-def get_sessions_repo(data: Optional[Dict[str, Any]] = None) -> Path:
-    config = data if data is not None else load_user_config(missing_ok=False)
-    repos = config.get("repos")
-    repo_value = repos.get("sessions") if isinstance(repos, dict) else None
-    if not isinstance(repo_value, str) or not repo_value:
-        raise ConfigError("missing config key: repos.sessions")
-    repo = Path(repo_value).expanduser().resolve()
-    if not repo.is_dir():
-        raise ConfigError(f"sessions repository does not exist: {repo}")
-    return repo
 
 
 def find_project_config(git_root: Path) -> Path:
@@ -177,18 +152,6 @@ def project_disables_sessions(git_root: Path) -> bool:
     data = load_json(path)
     sessions = data.get("sessions")
     return isinstance(sessions, dict) and sessions.get("enabled") is False
-
-
-def get_backends(data: Optional[Dict[str, Any]] = None) -> list[str]:
-    """Return validated backends; missing values retain legacy Git behavior."""
-    config = data if data is not None else load_user_config(missing_ok=False)
-    sessions = config.get("sessions", {})
-    backends = sessions.get("backends", ["git"])
-    if not isinstance(backends, list) or not backends:
-        raise ConfigError("sessions.backends must be a non-empty list")
-    if any(backend not in {"s3", "git"} for backend in backends):
-        raise ConfigError("sessions.backends may contain only 's3' and 'git'")
-    return backends
 
 
 def get_machine(data: Optional[Dict[str, Any]] = None) -> Optional[str]:

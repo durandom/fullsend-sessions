@@ -16,7 +16,7 @@ The installer gives the command a 30-second timeout. Claude Code otherwise allow
 
 The internal `hook run` command reads Claude's SessionEnd JSON from stdin. Do not invoke it without a test event. It intentionally exits successfully and silently for policy denials, malformed events, missing credentials, or upload failures so Claude shutdown cannot be blocked.
 
-After an upload succeeds, the hook emits a Claude Code `systemMessage` with the project, session ID, uploaded destinations, and file count. Denied or unchanged sessions emit nothing, and a failed backend never claims that its upload succeeded.
+After an upload succeeds, the hook emits a Claude Code `systemMessage` with the project, session ID, S3 destination, and file count. Denied, unchanged, or failed uploads emit nothing.
 
 For migration, verify the global hook and policy before uninstalling the local hook. Otherwise a gap between removal and installation can drop session exports.
 

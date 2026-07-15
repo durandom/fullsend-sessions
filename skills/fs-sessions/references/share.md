@@ -19,9 +19,9 @@ Or upload a known transcript:
 "$FS" share --transcript /path/to/session.jsonl --cwd /path/to/project
 ```
 
-Manual share returns non-zero when any selected backend fails. With the default
-S3 backend it stages the complete session family only for the duration of the
-upload, then removes the temporary copy.
+Manual share returns non-zero when S3 upload fails. It stages the complete
+session family only for the duration of the upload, then removes the temporary
+copy.
 
 Objects preserve AgentsView's S3 layout:
 
@@ -37,3 +37,6 @@ Objects preserve AgentsView's S3 layout:
 The parent transcript receives synthetic AgentsView metadata. Companion files
 are copied byte-for-byte, including binaries; symlinks are skipped so a session
 directory cannot pull unrelated files into the bucket.
+
+For interactive sessions, machine is the configured stable user identity and
+project is the Git repository name.
