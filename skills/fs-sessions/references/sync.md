@@ -1,17 +1,16 @@
-# Push or pull shared sessions
+# Explicit legacy Git synchronization
 
-Resolve the repository with `"$FS" config show`, then run Git inside that repository.
+The default S3 backend needs no push or pull. Objects become available after a
+successful upload and AgentsView discovers them through polling.
 
-Push:
-
-```bash
-git -C /path/to/fullsend-sessions push
-```
-
-Pull without merge commits:
+Use this workflow only when `config show` explicitly lists the legacy `git`
+backend. Resolve `repos.sessions`, then synchronize inside that repository:
 
 ```bash
-git -C /path/to/fullsend-sessions pull --rebase
+git -C /path/to/session-repository pull --rebase
+git -C /path/to/session-repository push
 ```
 
-Report commits transferred and newly available session files. Do not resolve transcript conflicts by editing content; preserve both source transcripts or ask the user when paths collide.
+Do not add Git merely because an old repository exists. Do not resolve
+transcript conflicts by editing content; preserve both source transcripts or
+ask the user when paths collide.

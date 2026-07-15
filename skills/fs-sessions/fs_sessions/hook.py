@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
 DEFAULT_SETTINGS = Path.home() / ".claude" / "settings.json"
+HOOK_TIMEOUT_SECONDS = 30
 
 
 class HookError(ValueError):
@@ -95,7 +96,13 @@ def install_hook(
     entries.append(
         {
             "matcher": "",
-            "hooks": [{"type": "command", "command": command}],
+            "hooks": [
+                {
+                    "type": "command",
+                    "command": command,
+                    "timeout": HOOK_TIMEOUT_SECONDS,
+                }
+            ],
         }
     )
     hooks["SessionEnd"] = entries

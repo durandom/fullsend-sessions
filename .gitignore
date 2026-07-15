@@ -2,6 +2,9 @@
 runs/
 runs-local/
 
+# Session transcripts live in S3 and must never be committed
+/sessions/
+
 # Local AgentsView checkout and SQLite runtime state
 /agentsview/
 /sessions.db-*

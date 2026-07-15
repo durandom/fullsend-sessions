@@ -57,6 +57,35 @@ def test_initialize_preserves_rhdh_config(tmp_path, monkeypatch):
     assert saved["sessions"]["policy"] == {"default": "deny", "rules": []}
 
 
+def test_initialize_s3_is_default_backend_and_stores_no_credentials(
+    tmp_path, monkeypatch
+):
+    path = tmp_path / "config.json"
+    path.write_text(json.dumps({"github": {"username": "octo"}}))
+    monkeypatch.setenv(config.USER_CONFIG_ENV, str(path))
+
+    saved = config.initialize_s3_sessions_config(
+        bucket="team-sessions",
+        region="eu-central-1",
+        machine="test-user",
+    )
+
+    assert saved["github"] == {"username": "octo"}
+    assert saved["sessions"]["backends"] == ["s3"]
+    assert saved["sessions"]["machine"] == "test-user"
+    assert saved["sessions"]["s3"] == {
+        "bucket": "team-sessions",
+        "region": "eu-central-1",
+    }
+    assert "access_key" not in json.dumps(saved).lower()
+
+
+@pytest.mark.parametrize("backends", [[], ["unknown"], "s3"])
+def test_invalid_backends_fail_closed(backends):
+    with pytest.raises(config.ConfigError):
+        config.get_backends({"sessions": {"backends": backends}})
+
+
 @pytest.mark.parametrize(
     ("url", "expected"),
     [
@@ -204,6 +233,13 @@ def test_hook_install_migrates_legacy_and_preserves_other_hooks(tmp_path):
     ]
     assert commands.count("notify-send done") == 1
     assert len([command for command in commands if "hook run" in command]) == 1
+    managed = [
+        hook
+        for entry in saved["hooks"]["SessionEnd"]
+        for hook in entry["hooks"]
+        if "hook run" in hook["command"]
+    ]
+    assert managed[0]["timeout"] == 30
     assert saved["theme"] == "dark"
 
 
@@ -237,8 +273,118 @@ def test_export_add_update_and_unchanged(tmp_path):
     assert metadata["message"]["content"].startswith("[Session: project] by user")
 
 
-def test_hook_run_exports_allowed_repository(global_config, tmp_path, monkeypatch):
+def test_export_preserves_complete_session_family(tmp_path):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    transcript = tmp_path / "session.jsonl"
+    transcript.write_text('{"type":"user"}\n')
+    companions = tmp_path / "session"
+    subagent = companions / "subagents" / "agent-child.jsonl"
+    tool_result = companions / "tool-results" / "tool-1.txt"
+    binary = companions / "attachments" / "image.jpg"
+    subagent.parent.mkdir(parents=True)
+    tool_result.parent.mkdir(parents=True)
+    binary.parent.mkdir(parents=True)
+    subagent.write_text('{"type":"assistant","agentId":"child"}\n')
+    tool_result.write_text("full tool output")
+    binary.write_bytes(b"\x00\xffimage")
+
+    first = prepare_export(transcript, "session", "project", repo, "user")
+
+    assert first is not None
+    assert len(first.paths) == 4
+    exported_family = repo / "sessions" / "user_project" / "session"
+    assert (
+        exported_family / "subagents" / subagent.name
+    ).read_bytes() == subagent.read_bytes()
+    assert (exported_family / "tool-results" / tool_result.name).read_bytes() == (
+        tool_result.read_bytes()
+    )
+    assert (
+        exported_family / "attachments" / binary.name
+    ).read_bytes() == binary.read_bytes()
+    assert prepare_export(transcript, "session", "project", repo, "user") is None
+
+    tool_result.write_text(
+        "changed tool out"
+    )  # Same byte length verifies content comparison.
+    updated = prepare_export(transcript, "session", "project", repo, "user")
+
+    assert updated is not None and updated.verb == "update"
+    assert updated.paths == [exported_family / "tool-results" / tool_result.name]
+
+
+def test_hook_run_exports_allowed_repository(
+    global_config, tmp_path, monkeypatch, capsys
+):
     _, repo, data = global_config
+    data["sessions"]["policy"]["default"] = "allow"
+    config.save_user_config(data)
+    source_repo = tmp_path / "source"
+    source_repo.mkdir()
+    transcript = tmp_path / "source.jsonl"
+    transcript.write_text('{"type":"user"}\n')
+    subagent = tmp_path / "session-1" / "subagents" / "agent-child.jsonl"
+    subagent.parent.mkdir(parents=True)
+    subagent.write_text('{"type":"assistant"}\n')
+    context = _context(source_repo)
+    event = {
+        "cwd": str(source_repo),
+        "transcript_path": str(transcript),
+        "session_id": "session-1",
+    }
+    monkeypatch.setattr("sys.stdin", io.StringIO(json.dumps(event)))
+    monkeypatch.setattr(
+        "fs_sessions.cli.evaluate_policy",
+        lambda *_: type("Decision", (), {"allowed": True, "context": context})(),
+    )
+    monkeypatch.setattr("fs_sessions.cli._username", lambda: "test-user")
+    monkeypatch.setattr("fs_sessions.cli.commit_files", lambda *args: True)
+    monkeypatch.setattr("fs_sessions.cli.pull_rebase", lambda *args: True)
+    monkeypatch.setattr("fs_sessions.cli.push", lambda *args: True)
+
+    assert main(["hook", "run"]) == 0
+    assert (repo / "sessions" / "test-user_source" / "session-1.jsonl").exists()
+    assert (
+        repo
+        / "sessions"
+        / "test-user_source"
+        / "session-1"
+        / "subagents"
+        / "agent-child.jsonl"
+    ).exists()
+    assert json.loads(capsys.readouterr().out) == {
+        "systemMessage": (
+            "fs-sessions: exported and uploaded 2 session files to Git "
+            "for source/session-1."
+        )
+    }
+
+
+def test_hook_run_skips_denied_repository(global_config, tmp_path, monkeypatch, capsys):
+    _, repo, _ = global_config
+    transcript = tmp_path / "source.jsonl"
+    transcript.write_text('{"type":"user"}\n')
+    event = {
+        "cwd": str(tmp_path),
+        "transcript_path": str(transcript),
+        "session_id": "session-1",
+    }
+    monkeypatch.setattr("sys.stdin", io.StringIO(json.dumps(event)))
+    monkeypatch.setattr(
+        "fs_sessions.cli.evaluate_policy",
+        lambda *_: type("Decision", (), {"allowed": False})(),
+    )
+
+    assert main(["hook", "run"]) == 0
+    assert list((repo / "sessions").glob("*/*.jsonl")) == []
+    assert capsys.readouterr().out == ""
+
+
+def test_hook_run_does_not_claim_upload_when_push_fails(
+    global_config, tmp_path, monkeypatch, capsys
+):
+    _, _, data = global_config
     data["sessions"]["policy"]["default"] = "allow"
     config.save_user_config(data)
     source_repo = tmp_path / "source"
@@ -257,31 +403,12 @@ def test_hook_run_exports_allowed_repository(global_config, tmp_path, monkeypatc
         lambda *_: type("Decision", (), {"allowed": True, "context": context})(),
     )
     monkeypatch.setattr("fs_sessions.cli._username", lambda: "test-user")
-    monkeypatch.setattr("fs_sessions.cli.commit_file", lambda *args: True)
+    monkeypatch.setattr("fs_sessions.cli.commit_files", lambda *args: True)
     monkeypatch.setattr("fs_sessions.cli.pull_rebase", lambda *args: True)
-    monkeypatch.setattr("fs_sessions.cli.push", lambda *args: True)
+    monkeypatch.setattr("fs_sessions.cli.push", lambda *args: False)
 
     assert main(["hook", "run"]) == 0
-    assert (repo / "sessions" / "test-user_source" / "session-1.jsonl").exists()
-
-
-def test_hook_run_skips_denied_repository(global_config, tmp_path, monkeypatch):
-    _, repo, _ = global_config
-    transcript = tmp_path / "source.jsonl"
-    transcript.write_text('{"type":"user"}\n')
-    event = {
-        "cwd": str(tmp_path),
-        "transcript_path": str(transcript),
-        "session_id": "session-1",
-    }
-    monkeypatch.setattr("sys.stdin", io.StringIO(json.dumps(event)))
-    monkeypatch.setattr(
-        "fs_sessions.cli.evaluate_policy",
-        lambda *_: type("Decision", (), {"allowed": False})(),
-    )
-
-    assert main(["hook", "run"]) == 0
-    assert list((repo / "sessions").glob("*/*.jsonl")) == []
+    assert capsys.readouterr().out == ""
 
 
 def test_commit_file_does_not_include_other_staged_changes(tmp_path):

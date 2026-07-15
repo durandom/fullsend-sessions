@@ -19,9 +19,17 @@ def run(repo: Path, args: List[str]) -> bool:
 
 def commit_file(repo: Path, relative_path: str, message: str) -> bool:
     """Commit only the exported transcript, leaving unrelated staged files alone."""
-    if not run(repo, ["add", "--", relative_path]):
+    return commit_files(repo, [relative_path], message)
+
+
+def commit_files(repo: Path, relative_paths: List[str], message: str) -> bool:
+    """Commit one session family without including unrelated staged changes."""
+    paths = list(dict.fromkeys(relative_paths))
+    if not paths:
         return False
-    return run(repo, ["commit", "-q", "--only", "-m", message, "--", relative_path])
+    if not run(repo, ["add", "--", *paths]):
+        return False
+    return run(repo, ["commit", "-q", "--only", "-m", message, "--", *paths])
 
 
 def pull_rebase(repo: Path) -> bool:
