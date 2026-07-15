@@ -13,7 +13,12 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, Iterable
 
-from fs_sessions.s3 import object_exists, upload_objects
+from fs_sessions.s3 import (
+    delete_objects,
+    object_exists,
+    read_json_object,
+    upload_objects,
+)
 
 DEFAULT_REPOS = (
     "redhat-developer/rhdh-agentic",
@@ -28,7 +33,7 @@ DEFAULT_ARTIFACT_NAMES = (
     "fullsend-review",
     "fullsend-triage",
 )
-CONVERTER_VERSION = 2
+CONVERTER_VERSION = 3
 
 
 class FullsendError(RuntimeError):
@@ -331,6 +336,20 @@ def _json_line(value: Dict[str, Any]) -> bytes:
     return json.dumps(value, ensure_ascii=False, separators=(",", ":")).encode()
 
 
+def _transcript_session_id(source: bytes, fallback: str) -> str:
+    for raw in source.splitlines():
+        try:
+            item = json.loads(raw)
+        except (UnicodeDecodeError, json.JSONDecodeError):
+            continue
+        session_id = item.get("sessionId")
+        if isinstance(session_id, str) and session_id:
+            if session_id in {".", ".."} or "/" in session_id or "\\" in session_id:
+                raise FullsendError(f"unsafe transcript sessionId: {session_id}")
+            return session_id
+    return fallback
+
+
 def _work_item(
     summary: Dict[str, Any], agent: str, workflow_log: bytes
 ) -> tuple[str, str]:
@@ -542,7 +561,7 @@ def convert_artifact(data: ArtifactInput, prefix: str = "") -> ConvertedArtifact
         raise FullsendError(f"expected one main transcript, found {len(main)}")
     subagents = sorted(set(transcripts) - set(main))
     main_name = main[0]
-    session_id = Path(main_name).stem
+    session_id = _transcript_session_id(entries[main_name], Path(main_name).stem)
     summary = _load_json(_find_entry(entries, "/run-summary.json"))
     result = _load_json(_find_entry(entries, "/agent-result.json"))
     runtime = _runtime_metadata(entries)
@@ -618,6 +637,34 @@ def convert_artifact(data: ArtifactInput, prefix: str = "") -> ConvertedArtifact
     return ConvertedArtifact(project, machine, session_id, objects, manifest)
 
 
+def _write_converted_artifact(
+    s3_config: Dict[str, Any],
+    converted: ConvertedArtifact,
+    key: str,
+    previous_manifest: Dict[str, Any] | None,
+) -> None:
+    manifest_body = (
+        json.dumps(converted.manifest, indent=2, sort_keys=True).encode() + b"\n"
+    )
+    upload_objects(s3_config, converted.objects)
+    previous = set((previous_manifest or {}).get("destinations", []))
+    current = set(converted.manifest["destinations"])
+    prefix = str(s3_config.get("prefix", ""))
+    generated_root = _prefixed(
+        prefix,
+        f"{converted.machine}/raw/claude/{converted.project}/",
+    )
+    stale = sorted(
+        destination
+        for destination in previous - current
+        if isinstance(destination, str)
+        and destination.startswith(generated_root)
+        and destination.endswith(".jsonl")
+    )
+    delete_objects(s3_config, stale)
+    upload_objects(s3_config, [(key, manifest_body)])
+
+
 def import_artifacts(
     s3_config: Dict[str, Any],
     artifacts: Iterable[Artifact],
@@ -632,16 +679,15 @@ def import_artifacts(
         summary.discovered += 1
         key = manifest_key(prefix, artifact)
         try:
+            previous_manifest = None
             if not dry_run and not force and object_exists(s3_config, key):
                 summary.skipped += 1
                 continue
+            if not dry_run and force:
+                previous_manifest = read_json_object(s3_config, key)
             converted = convert_artifact(fetch_artifact_input(client, artifact), prefix)
             if not dry_run:
-                manifest_body = (
-                    json.dumps(converted.manifest, indent=2, sort_keys=True).encode()
-                    + b"\n"
-                )
-                upload_objects(s3_config, [*converted.objects, (key, manifest_body)])
+                _write_converted_artifact(s3_config, converted, key, previous_manifest)
             summary.imported += 1
             summary.sessions += bool(converted.session_id)
             summary.subagents += converted.manifest["subagent_count"]
@@ -715,16 +761,15 @@ def import_cached_artifacts(
         summary.discovered += 1
         key = manifest_key(prefix, data.artifact)
         try:
+            previous_manifest = None
             if not dry_run and not force and object_exists(s3_config, key):
                 summary.skipped += 1
                 continue
+            if not dry_run and force:
+                previous_manifest = read_json_object(s3_config, key)
             converted = convert_artifact(data, prefix)
             if not dry_run:
-                manifest_body = (
-                    json.dumps(converted.manifest, indent=2, sort_keys=True).encode()
-                    + b"\n"
-                )
-                upload_objects(s3_config, [*converted.objects, (key, manifest_body)])
+                _write_converted_artifact(s3_config, converted, key, previous_manifest)
             summary.imported += 1
             summary.sessions += bool(converted.session_id)
             summary.subagents += converted.manifest["subagent_count"]

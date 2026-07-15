@@ -34,6 +34,11 @@ class FakeClient:
     def get_object(self, Bucket, Key):
         return {"Bucket": Bucket, "Key": Key, "Body": io.BytesIO(self.bodies[Key])}
 
+    def delete_objects(self, **kwargs):
+        self.deletes = getattr(self, "deletes", [])
+        self.deletes.append(kwargs)
+        return {}
+
 
 def test_upload_preserves_complete_session_family_layout(tmp_path, monkeypatch):
     base = tmp_path / "export"
@@ -108,6 +113,21 @@ def test_generic_object_checks_and_ordered_upload(monkeypatch):
         "parent.jsonl",
     ]
     assert all(item["ContentType"] == "application/x-ndjson" for item in client.puts)
+
+
+def test_read_json_and_delete_objects(monkeypatch):
+    client = FakeClient(bodies={"manifest.json": b'{"schema_version":3}'})
+    monkeypatch.setattr(s3, "_get_client", lambda _config: client)
+
+    assert s3.read_json_object({"bucket": "sessions"}, "manifest.json") == {
+        "schema_version": 3
+    }
+    s3.delete_objects({"bucket": "sessions"}, ["old-parent", "old-child"])
+
+    assert client.deletes[0]["Delete"]["Objects"] == [
+        {"Key": "old-parent"},
+        {"Key": "old-child"},
+    ]
 
 
 def test_repair_export_project_metadata_previews_and_applies(monkeypatch):
