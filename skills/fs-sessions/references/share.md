@@ -7,24 +7,26 @@ List recent local Claude Code transcripts:
 "$FS" list --limit 50
 ```
 
-Explicitly export the most recent transcript:
+Upload the most recent transcript without evaluating automatic-hook policy:
 
 ```bash
 "$FS" share --last
 ```
 
-Or export a known transcript:
+Or upload a known transcript:
 
 ```bash
 "$FS" share --transcript /path/to/session.jsonl --cwd /path/to/project
 ```
 
-Explicit sharing is a deliberate user action and does not evaluate the automatic-hook policy. It commits only the exported transcript and leaves unrelated staged files untouched. Push separately after reviewing when required.
+Manual share returns non-zero when any selected backend fails. With the default
+S3 backend it stages the complete session family only for the duration of the
+upload, then removes the temporary copy.
 
-Each export preserves the complete Claude session family:
+Objects preserve AgentsView's S3 layout:
 
 ```text
-sessions/<user>_<project>/
+<machine>/raw/claude/<project>/
   <session-id>.jsonl
   <session-id>/
     subagents/**
@@ -32,4 +34,6 @@ sessions/<user>_<project>/
     <other regular companion files>
 ```
 
-The main transcript receives the synthetic AgentsView metadata line. Companion files are copied byte-for-byte, including binary files; symlinks are skipped so a session directory cannot pull unrelated files into the shared repository.
+The parent transcript receives synthetic AgentsView metadata. Companion files
+are copied byte-for-byte, including binaries; symlinks are skipped so a session
+directory cannot pull unrelated files into the bucket.

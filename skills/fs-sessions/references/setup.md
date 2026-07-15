@@ -1,44 +1,63 @@
-# Setup or migrate
+# S3-first setup or migration
 
-Use this workflow for first-time global setup or migration from the legacy project-local Bash hook.
+Use this workflow for a new installation or migration from Git-backed sharing.
+Load `references/s3.md` directly from `SKILL.md` for credential and IAM gates.
+The skill configures an existing bucket; it does not provision cloud resources.
+If no bucket or authorized identity exists, ask the user to obtain them from
+their cloud administrator before continuing.
 
-## 1. Resolve the shared sessions repository
+## 1. Resolve the machine name
 
-Prefer, in order:
+Use a stable, non-secret user or workstation label such as `alice-laptop`.
+Prefer an existing `FS_SESSIONS_MACHINE`; otherwise normalize
+`git config user.name` to lowercase hyphenated form. Confirm it with the user
+when it is ambiguous because it becomes the AgentsView machine filter.
 
-1. Existing `repos.sessions` in `~/.config/rhdh-skill/config.json`.
-2. Legacy `FULLSEND_SESSIONS_REPO` from `~/.config/fullsend/sessions.env`.
-3. A path supplied by the user.
+## 2. Initialize S3 configuration
 
-Require an existing Git repository containing or intended to contain `sessions/`.
-
-## 2. Initialize safe global configuration
+With `S3_BUCKET`, `S3_REGION`, and boto3 credentials already in the environment:
 
 ```bash
-"$FS" config init --repo /absolute/path/to/fullsend-sessions --default deny
+"$FS" config init --machine alice-laptop
 ```
 
-This updates only `repos.sessions` and `sessions`; it preserves all other `rhdh-skill` configuration.
+Or pass non-secret deployment metadata explicitly:
 
-## 3. Add the initial allow rule
+```bash
+"$FS" config init \
+  --bucket team-agent-sessions \
+  --region eu-central-1 \
+  --machine alice-laptop \
+  --profile team-sessions
+```
 
-For migration, preserve the behavior of each repository that already had a local hook. Prefer an origin rule for team repositories and a path rule for local-only repositories:
+This sets `backends: ["s3"]`, keeps the policy default-deny, preserves unrelated
+global configuration, and never stores access keys or secret keys.
+
+## 3. Pass the S3 gates
+
+```bash
+"$FS" config show
+"$FS" s3 check
+```
+
+Stop if configuration contains a Git backend, credentials appear in the saved
+JSON, or `s3 check` cannot list the configured bucket. Use the error to identify
+the missing environment/profile or IAM permission before installing the hook.
+
+## 4. Add the initial allow rule
+
+Prefer an origin rule for team repositories and a path rule for local-only
+repositories:
 
 ```bash
 "$FS" policy allow --origin 'github.com/example-org/*'
 # or
 "$FS" policy allow --path '/absolute/path/to/repository'
-```
-
-Do not change `default` to `allow` merely to make setup convenient; that would export every Git repository not explicitly denied.
-
-## 4. Preview the decision
-
-```bash
 "$FS" policy check /absolute/path/to/repository
 ```
 
-Continue only when it reports `allow` and the expected rule number.
+Continue only when the check reports `allow` and the expected rule number.
 
 ## 5. Install the global hook
 
@@ -47,22 +66,28 @@ Continue only when it reports `allow` and the expected rule number.
 "$FS" hook status
 ```
 
-The installer replaces prior managed hooks in the selected settings file and preserves unrelated settings/hooks.
+The installer preserves unrelated settings and replaces earlier managed or
+legacy session hooks.
 
-## 6. Remove legacy project hooks
-
-After the global status and policy check pass, inspect each formerly configured project. Remove only the managed session hook:
-
-```bash
-"$FS" hook uninstall --settings /path/to/project/.claude/settings.json
-```
-
-Keep unrelated project hooks. Commit the project settings change when that settings file is tracked.
-
-## 7. Verify
+## 6. Verify a real upload
 
 ```bash
+"$FS" share --last
+"$FS" s3 roots
 "$FS" status
 ```
 
-Setup is complete when config is valid, the intended repository is allowed, exactly one global managed hook exists, and no legacy project-local session hook remains.
+Setup is complete when the explicit share reports S3 success, the expected
+machine root appears, the intended repository is allowed, and exactly one
+global managed hook exists.
+
+## Explicit legacy Git mode
+
+Use Git storage only when the user requests it:
+
+```bash
+"$FS" config init --backend git --repo /absolute/path/to/session-repository
+```
+
+Do not silently combine Git and S3; dual writes require an explicit config edit
+and a stated retention reason.

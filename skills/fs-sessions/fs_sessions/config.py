@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import tempfile
 from pathlib import Path
 from typing import Any, Dict, Optional
@@ -63,10 +64,71 @@ def save_user_config(data: Dict[str, Any]) -> Path:
     return path
 
 
-def initialize_sessions_config(repo: Path, default: str = "deny") -> Dict[str, Any]:
-    """Add safe session defaults to the existing global rhdh-skill config."""
+def _initialize_policy(sessions: Dict[str, Any], default: str) -> None:
     if default not in {"allow", "deny"}:
         raise ConfigError("policy default must be 'allow' or 'deny'")
+    sessions.setdefault("enabled", True)
+    policy = sessions.setdefault("policy", {})
+    if not isinstance(policy, dict):
+        raise ConfigError("config key 'sessions.policy' must be an object")
+    policy.setdefault("default", default)
+    policy.setdefault("rules", [])
+
+
+def _sessions_object(data: Dict[str, Any]) -> Dict[str, Any]:
+    sessions = data.setdefault("sessions", {})
+    if not isinstance(sessions, dict):
+        raise ConfigError("config key 'sessions' must be an object")
+    return sessions
+
+
+def validate_machine(machine: str) -> str:
+    machine = machine.strip()
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*", machine):
+        raise ConfigError(
+            "machine must start with a letter or digit and contain only "
+            "letters, digits, dots, underscores, or hyphens"
+        )
+    return machine
+
+
+def initialize_s3_sessions_config(
+    bucket: str,
+    region: str,
+    machine: str,
+    default: str = "deny",
+    profile: Optional[str] = None,
+    endpoint_url: Optional[str] = None,
+    prefix: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Initialize S3 as the sole default backend without storing credentials."""
+    bucket = bucket.strip()
+    region = region.strip()
+    if not bucket:
+        raise ConfigError("S3 bucket is required (--bucket or S3_BUCKET)")
+    if not region:
+        raise ConfigError("S3 region is required (--region or S3_REGION)")
+
+    data = load_user_config()
+    sessions = _sessions_object(data)
+    _initialize_policy(sessions, default)
+    sessions["backends"] = ["s3"]
+    sessions["machine"] = validate_machine(machine)
+    s3: Dict[str, Any] = {"bucket": bucket, "region": region}
+    for key, value in (
+        ("profile", profile),
+        ("endpoint_url", endpoint_url),
+        ("prefix", prefix),
+    ):
+        if value:
+            s3[key] = value
+    sessions["s3"] = s3
+    save_user_config(data)
+    return data
+
+
+def initialize_sessions_config(repo: Path, default: str = "deny") -> Dict[str, Any]:
+    """Initialize the explicit legacy Git backend."""
     repo = repo.expanduser().resolve()
     if not repo.is_dir():
         raise ConfigError(f"sessions repository does not exist: {repo}")
@@ -76,16 +138,9 @@ def initialize_sessions_config(repo: Path, default: str = "deny") -> Dict[str, A
     if not isinstance(repos, dict):
         raise ConfigError("config key 'repos' must be an object")
     repos["sessions"] = str(repo)
-
-    sessions = data.setdefault("sessions", {})
-    if not isinstance(sessions, dict):
-        raise ConfigError("config key 'sessions' must be an object")
-    sessions.setdefault("enabled", True)
-    policy = sessions.setdefault("policy", {})
-    if not isinstance(policy, dict):
-        raise ConfigError("config key 'sessions.policy' must be an object")
-    policy.setdefault("default", default)
-    policy.setdefault("rules", [])
+    sessions = _sessions_object(data)
+    _initialize_policy(sessions, default)
+    sessions["backends"] = ["git"]
     save_user_config(data)
     return data
 
@@ -125,13 +180,22 @@ def project_disables_sessions(git_root: Path) -> bool:
 
 
 def get_backends(data: Optional[Dict[str, Any]] = None) -> list[str]:
-    """Return the list of active backends (default: ["git"])."""
+    """Return validated backends; missing values retain legacy Git behavior."""
     config = data if data is not None else load_user_config(missing_ok=False)
     sessions = config.get("sessions", {})
     backends = sessions.get("backends", ["git"])
-    if isinstance(backends, list):
-        return backends
-    return ["git"]
+    if not isinstance(backends, list) or not backends:
+        raise ConfigError("sessions.backends must be a non-empty list")
+    if any(backend not in {"s3", "git"} for backend in backends):
+        raise ConfigError("sessions.backends may contain only 's3' and 'git'")
+    return backends
+
+
+def get_machine(data: Optional[Dict[str, Any]] = None) -> Optional[str]:
+    config = data if data is not None else load_user_config(missing_ok=False)
+    sessions = config.get("sessions", {})
+    machine = sessions.get("machine") if isinstance(sessions, dict) else None
+    return validate_machine(machine) if isinstance(machine, str) else None
 
 
 def get_s3_config(data: Optional[Dict[str, Any]] = None) -> Optional[Dict[str, Any]]:

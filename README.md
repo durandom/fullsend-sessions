@@ -2,12 +2,12 @@
 
 Share and browse Claude Code session transcripts across your team.
 
-Allowed sessions are auto-exported when a Claude Code session ends, committed to this shared Git repository, and pushed to the remote. [AgentsView](https://github.com/kenn-io/agentsview) serves them for browsing, searching, and analysis.
+Allowed sessions are uploaded to S3 when a Claude Code session ends. [AgentsView](https://github.com/kenn-io/agentsview) reads the bucket directly for browsing, searching, per-user filtering, and analysis. Git storage remains available only as an explicit legacy backend.
 
 ## Quick start
 
 ```bash
-# 1. Clone (anywhere you like)
+# 1. Clone the skill repository
 git clone git@github.com:durandom/fullsend-sessions.git
 
 # 2. Install the session-sharing skill globally
@@ -17,12 +17,21 @@ npx skills add -g git@github.com:durandom/fullsend-sessions.git \
 # 3. Resolve the installed CLI
 FS_SESSIONS="$HOME/.agents/skills/fs-sessions/scripts/fs-sessions"
 
-# 4. Configure this clone and a default-deny policy
-"$FS_SESSIONS" config init --repo "$PWD" --default deny
+# 4. Load S3 deployment settings and credentials without printing them
+export S3_BUCKET=team-agent-sessions
+export S3_REGION=eu-central-1
+export AWS_ACCESS_KEY_ID=...
+export AWS_SECRET_ACCESS_KEY=...
+
+# 5. Configure the S3-first backend and a default-deny policy
+"$FS_SESSIONS" config init --machine alice-laptop
+"$FS_SESSIONS" s3 check
 "$FS_SESSIONS" policy allow --origin 'github.com/example-org/*'
 
-# 5. Verify one repository, then install the global Claude Code hook
+# 6. Verify one repository and one real upload, then install the hook
 "$FS_SESSIONS" policy check /absolute/path/to/an/allowed-repository
+"$FS_SESSIONS" share --last
+"$FS_SESSIONS" s3 roots
 "$FS_SESSIONS" hook install
 "$FS_SESSIONS" status
 ```
@@ -51,9 +60,10 @@ npx skills list -g --json
 Claude can run the policy and hook CLI through the installed skill. For a safe
 initial setup, ask:
 
-> Use fs-sessions to configure `/absolute/path/to/fullsend-sessions` as my
-> shared sessions repository. Keep the policy default-deny, install exactly one
-> global SessionEnd hook, and show the resulting status.
+> Use fs-sessions to configure S3 session sharing from my current environment.
+> Keep the policy default-deny, confirm the bucket access and machine name,
+> install exactly one global SessionEnd hook, share one test session, and show
+> the resulting AgentsView roots.
 
 Allow another repository with an origin rule:
 
@@ -77,15 +87,15 @@ the last matching rule wins:
 
 ```
 Session ends → global SessionEnd hook → repository policy check
-  → copies the parent transcript and its complete companion directory
-  → git commit
-  → git pull --rebase && git push (best-effort, silent on failure)
+  → stages the parent transcript and its complete companion directory
+  → uploads to S3 under <machine>/raw/claude/<project>/
+  → removes the temporary staging copy
 ```
 
 Sessions preserve Claude's AgentsView-compatible layout:
 
 ```text
-sessions/<user>_<project>/
+<machine>/raw/claude/<project>/
   <session-id>.jsonl
   <session-id>/
     subagents/**
@@ -95,7 +105,7 @@ sessions/<user>_<project>/
 
 The parent transcript gets a metadata header with project, user, and timestamp. Companion files are copied byte-for-byte, including binary attachments; symlinks are skipped. This lets AgentsView connect delegated subagent work to its parent and resolve externalized tool results.
 
-After an upload succeeds, Claude Code shows a message such as `fs-sessions: exported and uploaded 3 session files to Git for example/session-id.` Denied or unchanged sessions stay quiet, and the hook never reports a backend upload that failed.
+After an upload succeeds, Claude Code shows a message such as `fs-sessions: exported and uploaded 3 session files to S3 for example/session-id.` Denied or unchanged sessions stay quiet, and the hook never reports a backend upload that failed.
 
 ## Repository policy
 
@@ -146,8 +156,8 @@ When migrating an old project-local hook, verify the global policy and hook firs
 Browse shared sessions in a web UI:
 
 ```bash
-just sessions                         # start AgentsView with shared sessions
-just down                             # stop AgentsView
+just sessions-s3                      # start AgentsView directly from S3
+just down-s3                          # stop S3 viewer and remove derived index
 ```
 
 For LAN access: `AGENTSVIEW_HOST=$(hostname).local just sessions`
@@ -169,13 +179,12 @@ Once installed, use `/fs-sessions` in any Claude Code session:
 
 | Command | Description |
 |---------|-------------|
-| `/fs-sessions setup` | Configure the repository, policy, and global hook |
+| `/fs-sessions setup` | Configure S3, credentials, machine, policy, and hook |
 | `/fs-sessions policy` | Allow, deny, list, or explain repository rules |
 | `/fs-sessions hook` | Install, inspect, migrate, or remove the global hook |
-| `/fs-sessions status` | Check config, policy, sessions, and hook state |
-| `/fs-sessions share` | List or explicitly export a local session |
-| `/fs-sessions push` | Push local session commits |
-| `/fs-sessions pull` | Pull team sessions |
+| `/fs-sessions status` | Check S3 config, policy, credentials, and hook state |
+| `/fs-sessions share` | List or explicitly upload a local session |
+| `/fs-sessions s3` | Validate access or discover AgentsView roots |
 | `/fs-sessions view` | Start AgentsView |
 
 The repository also contains an `agentsview` skill for factual, read-only access
@@ -198,9 +207,6 @@ This repo is home to the RHDH AI-Augmented Pod — a focused sub-team experiment
 ```
 docs/                                 # Pod charter and commandments
 meetings/transcripts/                 # Google Meet transcript exports
-sessions/                             # shared session transcripts
-  <user>_<project>/
-    <session-id>.jsonl
 scripts/
   fetch-fullsend-runs.sh              # download fullsend runs from GH Actions
   import-local-run.sh                 # import local fullsend runs
@@ -220,7 +226,7 @@ skills/agentsview/                    # factual local AgentsView retrieval skill
 
 ## Prerequisites
 
-- Python 3.10+ and `git`
+- Python 3.10+, `git`, and `boto3`
 - `podman` (for AgentsView)
 - `gh` (for fetching fullsend runs)
 
