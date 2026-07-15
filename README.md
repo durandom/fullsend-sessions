@@ -1,43 +1,21 @@
 # fullsend-sessions
 
-Store selected Claude Code sessions and Fullsend GitHub Actions runs in S3,
-then browse and query them with
+Share selected Claude Code sessions and Fullsend agent runs through S3, then
+browse and query them with
 [AgentsView](https://github.com/kenn-io/agentsview).
 
-S3 is the only transcript backend. Git is used only to identify repositories
-for privacy policy checks and as the source of GitHub Actions artifacts.
+This repository provides two agent skills:
 
-## Session identity
+- `fs-sessions` configures sharing, repository policy, automatic uploads, and
+  Fullsend imports.
+- `agentsview` starts and queries the local S3-backed session viewer.
 
-AgentsView exposes project, agent, and machine dimensions. This repository maps
-them consistently:
-
-| AgentsView field | Meaning |
-|---|---|
-| `project` | Git repository name, such as `rhdh-agentic` |
-| `agent` | Session format/runtime, normally `claude` |
-| `machine` | Producing user or Fullsend agent, such as `marcel-hild` or `fs-code` |
-
-AgentsView derives project identity from transcript working-directory metadata
-and normalizes dashes to underscores in the UI. For example, the repository
-`rhdh-plugins` appears as `rhdh_plugins`.
-
-S3 objects follow AgentsView's native layout:
-
-```text
-<machine>/raw/claude/<project>/<session-id>.jsonl
-<machine>/raw/claude/<project>/<session-id>/subagents/...
-```
+You install the skills once. After that, use them by asking your agent for the
+outcome you want. You do not need to locate or invoke their internal CLIs.
 
 ## Install
 
-Prerequisites are Node.js/npm, Python 3.10 or newer, and boto3:
-
-```bash
-python3 -c 'import boto3' 2>/dev/null || python3 -m pip install --user boto3
-```
-
-Install both skills globally for Claude Code and Codex:
+Install the skills globally for Claude Code and Codex:
 
 ```bash
 npx skills add -g git@github.com:durandom/fullsend-sessions.git \
@@ -46,70 +24,122 @@ npx skills add -g git@github.com:durandom/fullsend-sessions.git \
   --copy -y
 ```
 
-Start a new agent session after installation.
+Start a new agent session after installation so the skills are available.
+Python 3.10 or newer and `boto3` are required. Running the local viewer also
+requires Podman.
 
-## Configure session sharing
+## Set up session sharing
 
-Load an existing S3 bucket and boto3-compatible credentials, then ask an agent:
+Load your S3 credentials into the environment before starting the agent. Do
+not paste credentials into chat or store them in this repository.
 
-> Use fs-sessions to configure S3 session sharing. Use my stable user identity
-> as the AgentsView machine, keep policy default-deny, allow this repository,
-> verify one upload, and install exactly one global hook.
+Then ask:
 
-Manual setup uses the installed CLI:
+> Set up fs-sessions with S3 bucket `team-agent-sessions` in `eu-central-1`.
+> Use my existing AWS profile and `alice` as my stable machine identity. Keep
+> sharing default-deny, allow this repository, verify one upload, and install
+> exactly one global SessionEnd hook.
 
-```bash
-FS_SESSIONS="$HOME/.agents/skills/fs-sessions/scripts/fs-sessions"
+The agent validates S3 access, stores only non-secret bucket metadata, creates
+the global repository policy, tests an upload, and installs the hook. The
+machine identity is the person or Fullsend agent that produced a session; it
+does not need to be a physical computer name.
 
-export S3_BUCKET=team-agent-sessions
-export S3_REGION=eu-central-1
-export AWS_PROFILE=team-sessions  # or use the normal AWS environment chain
+To check an existing installation, ask:
 
-"$FS_SESSIONS" config init --machine alice
-"$FS_SESSIONS" s3 check
-```
+> Check whether session sharing is correctly configured for this repository.
+> Verify S3 access, explain the matching policy rule, inspect the global hook,
+> and tell me whether the next completed session will upload.
 
-The machine value is a stable actor identity, not necessarily a physical
-computer. It becomes the AgentsView machine filter. Credentials remain in the
-standard boto3 credential chain; only bucket metadata is stored in
-`~/.config/rhdh-skill/config.json`.
+## Choose what gets shared
 
-## Choose which repositories may upload
+Sharing is controlled by a global, ordered policy. The safe default is to deny
+everything and explicitly allow trusted repositories or organizations.
 
-Automatic uploads are controlled by a global ordered policy. The recommended
-model is a default-deny whitelist:
+Example requests:
 
-```bash
-"$FS_SESSIONS" policy default deny
-"$FS_SESSIONS" policy allow --origin 'github.com/example-org/*'
-"$FS_SESSIONS" policy check /absolute/path/to/repository
-```
+> Allow session sharing for every repository in `github.com/example-org/*`,
+> then show me the resulting policy.
 
-The last matching rule wins. A repository may opt out with
-`.rhdh/config.json`, but cannot grant itself upload permission:
+> Stop sharing sessions from this repository without changing the rules for
+> other repositories.
+
+> Explain why the current repository is allowed or denied. Do not change the
+> policy.
+
+A checked-out repository cannot grant itself permission to upload. It can only
+opt out by setting this in `.rhdh/config.json`:
 
 ```json
 {"sessions":{"enabled":false}}
 ```
 
-Verify a real upload, then install the global Claude Code `SessionEnd` hook:
+## Share and find sessions
 
-```bash
-"$FS_SESSIONS" share --last
-"$FS_SESSIONS" s3 roots
-"$FS_SESSIONS" hook install
-"$FS_SESSIONS" status
-```
+The global hook uploads an allowed session when it ends. It preserves the
+parent transcript, nested subagents, tool results, and companion files.
 
-The hook preserves the parent transcript, nested subagents, tool results, and
-regular companion files.
+You can also ask for an explicit upload:
 
-## Import Fullsend runs from GitHub
+> Share my most recent Claude Code session now and verify that its complete
+> session family is present in S3.
 
-The importer queries exact `fullsend-*` GitHub Actions artifacts, downloads
-them on demand, reconstructs AgentsView-compatible sessions, and uploads them
-directly to S3. Repository names become projects and artifact agent names become
-machines:
+To browse the archive, ask:
+
+> Start the local S3-backed AgentsView service, verify it is healthy, and give
+> me the viewer URL.
+
+Once it is running, use natural requests such as:
+
+> Find the most recent sessions for the `rhdh-plugins` repository.
+
+> Show me the parent, subagents, message count, and completion status for this
+> AgentsView session: `<session-id>`.
+
+> Search our recorded sessions for the decision about S3 project and machine
+> naming. Cite the sessions and messages that support the answer.
+
+AgentsView is read-only by default. Rebuilding its disposable local index does
+not alter the source transcripts in S3.
+
+## Import Fullsend runs
+
+Fullsend artifacts are downloaded from GitHub on demand, converted into native
+AgentsView sessions, and uploaded directly to S3. Ask the agent to preview
+before importing:
+
+> Preview Fullsend session artifacts from the last seven days. Group the
+> result by repository and Fullsend agent, and do not write to S3 yet.
+
+Then import the desired scope:
+
+> Import the previewed Fullsend artifacts into S3 and report the numbers of
+> parent sessions, subagents, skipped artifacts, and failures.
+
+You can also target a repository or workflow run:
+
+> Import Fullsend run `123456789` from
+> `redhat-developer/rhdh-agentic`, then verify it appears in AgentsView.
+
+Repeated imports are idempotent. A forced schema migration regenerates derived
+sessions while preserving the archived GitHub artifact and provenance; it may
+require scoped S3 delete permission for obsolete derived objects.
+
+## How sessions are grouped
+
+AgentsView exposes project, agent, and machine dimensions. This repository uses
+them consistently:
+
+| AgentsView field | Meaning |
+|---|---|
+| `project` | Git repository, such as `rhdh-plugins` |
+| `agent` | Session format/runtime, normally `claude` |
+| `machine` | Producing user or Fullsend agent, such as `alice` or `fs-code` |
+
+AgentsView normalizes dashes to underscores in project labels, so
+`rhdh-plugins` appears as `rhdh_plugins` in the UI.
+
+Fullsend machine names are derived from the artifact agent:
 
 ```text
 fullsend-code   -> fs-code
@@ -117,84 +147,24 @@ fullsend-review -> fs-review
 fullsend-triage -> fs-triage
 ```
 
-Preview the last seven days without writing S3:
+S3 is the only transcript backend. Git is used only to identify repositories
+for policy checks and to retrieve GitHub Actions artifacts. Runtime secrets,
+AgentsView configuration, and transcript content stay outside this repository.
 
-```bash
-"$FS_SESSIONS" fullsend import --since 7d --dry-run
-```
+## Common requests
 
-Import them:
+> Show me the current sharing status.
 
-```bash
-"$FS_SESSIONS" fullsend import --since 7d
-```
+> List the repositories allowed to upload sessions.
 
-Useful scopes:
+> Share my latest session.
 
-```bash
-"$FS_SESSIONS" fullsend import \
-  --repo redhat-developer/rhdh-agentic \
-  --run-id 123456789
+> Preview recent Fullsend runs.
 
-"$FS_SESSIONS" fullsend import --all
-```
+> Start AgentsView and give me its URL.
 
-Each import stores the original artifact, workflow provenance, available
-revision-pinned context, the derived session family, and a completion manifest.
-Existing manifests make repeated imports idempotent. `--force` reconverts an
-artifact with the current converter.
+> Rebuild the local AgentsView index from S3.
 
-For the one-time migration from the old `rhdh-fullsend` cache:
+> Find sessions for this repository from `fs-review`.
 
-```bash
-"$FS_SESSIONS" fullsend import \
-  --cache-dir /path/to/rhdh-fullsend/agentsview/artifacts \
-  --dry-run
-```
-
-Remove `--dry-run` after reviewing the counts.
-
-## Start AgentsView
-
-Use the `agentsview` skill to create private runtime configuration outside Git
-and populate `claude_project_dirs` from every root returned by:
-
-```bash
-"$FS_SESSIONS" s3 roots
-```
-
-The deterministic CLI operation used by that setup is:
-
-```bash
-"$FS_SESSIONS" s3 agentsview-config \
-  --data-dir "$HOME/.local/share/fullsend-agentsview"
-```
-
-It changes only `claude_project_dirs` and preserves existing AgentsView tokens
-and unrelated runtime settings.
-
-Then start the repository's S3-only compose service:
-
-```bash
-just up
-```
-
-The runtime directory defaults to
-`~/.local/share/fullsend-agentsview`; override it with `AGENTSVIEW_DATA`.
-Stop the container without deleting its derived index:
-
-```bash
-just down
-```
-
-The `agentsview` skill connects its host CLI to the container and remains
-read-only by default.
-
-## Development
-
-```bash
-uv sync
-uv run ruff check .
-uv run ruff format --check .
-uv run pytest -q
-```
+> Stop AgentsView without deleting its S3 data.
