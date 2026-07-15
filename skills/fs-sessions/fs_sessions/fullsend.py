@@ -28,7 +28,7 @@ DEFAULT_ARTIFACT_NAMES = (
     "fullsend-review",
     "fullsend-triage",
 )
-CONVERTER_VERSION = 1
+CONVERTER_VERSION = 2
 
 
 class FullsendError(RuntimeError):
@@ -460,7 +460,7 @@ def _execution_context(
     return "\n".join(lines).rstrip() + "\n"
 
 
-def _rewrite_transcript(source: bytes, title: str) -> list[bytes]:
+def _rewrite_transcript(source: bytes, title: str, cwd: str) -> list[bytes]:
     output = []
     for raw in source.splitlines():
         if not raw:
@@ -473,6 +473,8 @@ def _rewrite_transcript(source: bytes, title: str) -> list[bytes]:
         kind = item.get("type")
         if kind == "queue-operation":
             continue
+        if kind == "user":
+            item["cwd"] = cwd
         if kind == "ai-title":
             item["aiTitle"] = title
         elif (
@@ -552,22 +554,23 @@ def convert_artifact(data: ArtifactInput, prefix: str = "") -> ConvertedArtifact
         f"{data.artifact.run_id} [{conclusion}{extra}]"
     )
     created = data.artifact.created
+    cwd = f"/fullsend/{project}"
     meta = {
         "type": "user",
         "timestamp": created,
         "message": {
             "content": f"{title}\n{data.provenance.get('run_url', '')}".rstrip()
         },
-        "cwd": f"/fullsend/{project}",
+        "cwd": cwd,
     }
     context = {
         "type": "user",
         "timestamp": created,
         "message": {"content": _execution_context(data, runtime)},
-        "cwd": f"/fullsend/{project}",
+        "cwd": cwd,
     }
     lines = [_json_line(meta), _json_line(context)]
-    lines.extend(_rewrite_transcript(entries[main_name], title))
+    lines.extend(_rewrite_transcript(entries[main_name], title, cwd))
     comment = result.get("comment")
     if comment:
         lines.append(
@@ -591,7 +594,8 @@ def convert_artifact(data: ArtifactInput, prefix: str = "") -> ConvertedArtifact
         filename = Path(name).name
         clean = "agent-" + filename.split("-agent-", 1)[-1]
         key = _prefixed(prefix, f"{root}/{session_id}/subagents/{clean}")
-        objects.append((key, entries[name]))
+        child = b"\n".join(_rewrite_transcript(entries[name], title, cwd)) + b"\n"
+        objects.append((key, child))
         destinations.append(key)
     parent_key = _prefixed(prefix, f"{root}/{session_id}.jsonl")
     objects.append((parent_key, b"\n".join(lines) + b"\n"))

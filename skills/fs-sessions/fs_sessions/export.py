@@ -23,7 +23,7 @@ def build_metadata_line(
     project: str, username: str, timestamp: Optional[str] = None
 ) -> str:
     ts = timestamp or datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-    cwd = f"/sessions/{username}_{project}"
+    cwd = f"/sessions/{project}"
     meta = {
         "type": "user",
         "timestamp": ts,

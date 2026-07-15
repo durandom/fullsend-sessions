@@ -18,6 +18,10 @@ them consistently:
 | `agent` | Session format/runtime, normally `claude` |
 | `machine` | Producing user or Fullsend agent, such as `marcel-hild` or `fs-code` |
 
+AgentsView derives project identity from transcript working-directory metadata
+and normalizes dashes to underscores in the UI. For example, the repository
+`rhdh-plugins` appears as `rhdh_plugins`.
+
 S3 objects follow AgentsView's native layout:
 
 ```text
