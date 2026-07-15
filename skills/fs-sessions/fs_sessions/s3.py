@@ -192,6 +192,85 @@ def upload_objects(
             raise S3Error(f"cannot upload s3://{bucket}/{key}: {exc}") from exc
 
 
+def repair_export_project_metadata(
+    s3_config: Dict[str, Any], *, apply: bool = False
+) -> Dict[str, Any]:
+    """Repair old exporter-generated headers that included machine in project cwd."""
+    bucket = s3_config.get("bucket")
+    if not bucket:
+        raise S3Error("S3 bucket is not configured")
+    prefix = s3_config.get("prefix", "").strip("/")
+    list_prefix = f"{prefix}/" if prefix else ""
+    client = _get_client(s3_config)
+    token = None
+    scanned = 0
+    changed = 0
+    try:
+        while True:
+            kwargs: Dict[str, Any] = {"Bucket": bucket, "Prefix": list_prefix}
+            if token:
+                kwargs["ContinuationToken"] = token
+            response = client.list_objects_v2(**kwargs)
+            for item in response.get("Contents", []):
+                key = item.get("Key", "")
+                relative = (
+                    key[len(list_prefix) :] if key.startswith(list_prefix) else key
+                )
+                parts = relative.split("/")
+                if (
+                    len(parts) != 5
+                    or parts[1:3] != ["raw", "claude"]
+                    or not parts[4].endswith(".jsonl")
+                    or parts[0].startswith("fs-")
+                ):
+                    continue
+                scanned += 1
+                body = client.get_object(Bucket=bucket, Key=key)["Body"].read()
+                first, separator, rest = body.partition(b"\n")
+                try:
+                    metadata = json.loads(first)
+                except (UnicodeDecodeError, json.JSONDecodeError):
+                    continue
+                project = parts[3]
+                message = metadata.get("message", {})
+                content = (
+                    message.get("content", "") if isinstance(message, dict) else ""
+                )
+                old_cwd = metadata.get("cwd", "")
+                if (
+                    metadata.get("type") != "user"
+                    or not content.startswith("[Session:")
+                    or not old_cwd.startswith("/sessions/")
+                ):
+                    continue
+                cwd = f"/sessions/{project}"
+                if old_cwd == cwd:
+                    continue
+                metadata["cwd"] = cwd
+                message["content"] = content.replace(old_cwd, cwd, 1)
+                repaired = json.dumps(metadata, separators=(",", ":")).encode()
+                if separator:
+                    repaired += separator + rest
+                changed += 1
+                if apply:
+                    client.put_object(
+                        Bucket=bucket,
+                        Key=key,
+                        Body=repaired,
+                        ContentType="application/x-ndjson",
+                    )
+            if not response.get("IsTruncated"):
+                break
+            token = response.get("NextContinuationToken")
+    except Exception as exc:
+        if isinstance(exc, S3Error):
+            raise
+        raise S3Error(
+            f"cannot repair project metadata in s3://{bucket}: {exc}"
+        ) from exc
+    return {"success": True, "apply": apply, "scanned": scanned, "changed": changed}
+
+
 def write_agentsview_config(
     s3_config: Dict[str, Any], data_dir: Path
 ) -> Dict[str, Any]:

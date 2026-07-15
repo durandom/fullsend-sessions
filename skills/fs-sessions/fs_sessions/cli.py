@@ -162,6 +162,23 @@ def cmd_s3_agentsview_config(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_s3_repair_project_metadata(args: argparse.Namespace) -> int:
+    from fs_sessions.s3 import repair_export_project_metadata
+
+    config = load_user_config(missing_ok=False)
+    s3_config = get_s3_config(config)
+    if not s3_config:
+        raise ConfigError("S3 is not configured; run 'config init' first")
+    payload = repair_export_project_metadata(s3_config, apply=args.apply)
+    action = "Repaired" if args.apply else "Would repair"
+    _emit(
+        payload,
+        f"{action} {payload['changed']} of {payload['scanned']} exported sessions",
+        args.json,
+    )
+    return 0
+
+
 def cmd_policy_check(args: argparse.Namespace) -> int:
     decision = evaluate_policy(load_user_config(missing_ok=False), Path(args.path))
     data = decision.to_dict()
@@ -516,6 +533,16 @@ def create_parser() -> argparse.ArgumentParser:
         help="Private AgentsView data directory outside Git",
     )
     s3_agentsview.set_defaults(func=cmd_s3_agentsview_config)
+    s3_repair = s3_sub.add_parser(
+        "repair-project-metadata",
+        help="Repair legacy machine-prefixed project metadata",
+    )
+    s3_repair.add_argument(
+        "--apply",
+        action="store_true",
+        help="Write repaired exporter-generated headers (default: preview only)",
+    )
+    s3_repair.set_defaults(func=cmd_s3_repair_project_metadata)
 
     policy = sub.add_parser("policy", help="Manage ordered repository allow/deny rules")
     policy_sub = policy.add_subparsers(dest="policy_command", required=True)

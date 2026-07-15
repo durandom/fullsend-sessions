@@ -24,8 +24,8 @@
     "argumentHint": "[--since 7d | --run-id ID | --cache-dir PATH]"
   },
   "s3": {
-    "description": "Validate S3 bucket access and discover AgentsView Claude roots from uploaded machine prefixes.",
-    "argumentHint": "[check|roots|agentsview-config]"
+    "description": "Validate S3 access, discover AgentsView roots, and repair legacy project metadata.",
+    "argumentHint": "[check|roots|agentsview-config|repair-project-metadata]"
   },
   "view": {
     "description": "Start, stop, or rebuild AgentsView for shared team session transcripts.",

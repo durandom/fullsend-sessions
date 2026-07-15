@@ -271,6 +271,8 @@ def test_export_add_update_and_unchanged(tmp_path):
     assert updated is not None and updated.verb == "update"
     metadata = json.loads(updated.dest.read_text().splitlines()[0])
     assert metadata["message"]["content"].startswith("[Session: project] by user")
+    assert metadata["cwd"] == "/sessions/project"
+    assert "user_project" not in metadata["message"]["content"]
 
 
 def test_export_preserves_complete_session_family(tmp_path):

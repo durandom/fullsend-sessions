@@ -2,14 +2,18 @@
 
 from __future__ import annotations
 
+import io
+import json
+
 from fs_sessions import s3
 
 
 class FakeClient:
-    def __init__(self, objects=None):
+    def __init__(self, objects=None, bodies=None):
         self.uploads = []
         self.puts = []
         self.objects = objects or []
+        self.bodies = bodies or {}
 
     def upload_file(self, path, bucket, key):
         self.uploads.append((path, bucket, key))
@@ -26,6 +30,9 @@ class FakeClient:
 
     def put_object(self, **kwargs):
         self.puts.append(kwargs)
+
+    def get_object(self, Bucket, Key):
+        return {"Bucket": Bucket, "Key": Key, "Body": io.BytesIO(self.bodies[Key])}
 
 
 def test_upload_preserves_complete_session_family_layout(tmp_path, monkeypatch):
@@ -101,6 +108,34 @@ def test_generic_object_checks_and_ordered_upload(monkeypatch):
         "parent.jsonl",
     ]
     assert all(item["ContentType"] == "application/x-ndjson" for item in client.puts)
+
+
+def test_repair_export_project_metadata_previews_and_applies(monkeypatch):
+    key = "alice/raw/claude/example-repo/session.jsonl"
+    old_cwd = "/sessions/alice_example-repo"
+    header = {
+        "type": "user",
+        "message": {"content": f"[Session: example-repo] by alice\nProject: {old_cwd}"},
+        "cwd": old_cwd,
+    }
+    original = json.dumps(header).encode() + b'\n{"type":"assistant"}\n'
+    client = FakeClient([key], {key: original})
+    monkeypatch.setattr(s3, "_get_client", lambda _config: client)
+
+    preview = s3.repair_export_project_metadata({"bucket": "sessions"})
+
+    assert preview == {"success": True, "apply": False, "scanned": 1, "changed": 1}
+    assert client.puts == []
+
+    applied = s3.repair_export_project_metadata({"bucket": "sessions"}, apply=True)
+
+    assert applied["changed"] == 1
+    repaired = client.puts[0]["Body"]
+    first, rest = repaired.split(b"\n", 1)
+    metadata = json.loads(first)
+    assert metadata["cwd"] == "/sessions/example-repo"
+    assert "alice_example-repo" not in metadata["message"]["content"]
+    assert rest == b'{"type":"assistant"}\n'
 
 
 def test_agentsview_config_updates_roots_and_preserves_secrets(tmp_path, monkeypatch):

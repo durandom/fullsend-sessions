@@ -27,7 +27,13 @@ def artifact_zip() -> bytes:
                 [
                     json.dumps({"type": "ai-title", "aiTitle": "Old title"}),
                     json.dumps({"type": "queue-operation", "content": "internal"}),
-                    json.dumps({"type": "user", "message": {"content": "Do work"}}),
+                    json.dumps(
+                        {
+                            "type": "user",
+                            "message": {"content": "Do work"},
+                            "cwd": "/target-repo",
+                        }
+                    ),
                     json.dumps(
                         {
                             "type": "assistant",
@@ -40,7 +46,11 @@ def artifact_zip() -> bytes:
         )
         archive.writestr(
             f"{root}/transcripts/code-agent-a123.jsonl",
-            '{"type":"assistant","message":{"content":"child"}}\n',
+            (
+                '{"type":"user","cwd":"/target-repo",'
+                '"message":{"content":"delegate"}}\n'
+                '{"type":"assistant","message":{"content":"child"}}\n'
+            ),
         )
         archive.writestr(
             "agent-code-89-123/run-summary.json",
@@ -113,7 +123,12 @@ def test_convert_maps_repo_to_project_and_fs_agent_to_machine():
         "team/fs-code/raw/claude/rhdh-agentic/code-session-1/subagents/agent-a123.jsonl"
     )
     assert keys[1] == ("team/fs-code/raw/claude/rhdh-agentic/code-session-1.jsonl")
+    child = converted.objects[0][1].decode()
     parent = converted.objects[1][1].decode()
+    assert '"cwd":"/fullsend/rhdh-agentic"' in child
+    assert "/target-repo" not in child
+    assert '"cwd":"/fullsend/rhdh-agentic"' in parent
+    assert "/target-repo" not in parent
     assert "code issue #89 - run 9876 [success · $0.44 · 215s · 19 turns]" in parent
     assert "📋 Fullsend Execution Context" in parent
     assert "You are the code agent." in parent
@@ -123,6 +138,7 @@ def test_convert_maps_repo_to_project_and_fs_agent_to_machine():
     assert converted.manifest["machine"] == "fs-code"
     assert converted.manifest["project"] == "rhdh-agentic"
     assert converted.manifest["subagent_count"] == 1
+    assert converted.manifest["schema_version"] == 2
 
 
 def test_import_is_idempotent_and_writes_manifest_last(monkeypatch):
