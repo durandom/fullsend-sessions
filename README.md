@@ -1,98 +1,184 @@
 # fullsend-sessions
 
-Share and browse Claude Code session transcripts across your team.
+Share Claude Code session transcripts with your team through S3, and browse or
+query them with [AgentsView](https://github.com/kenn-io/agentsview).
 
-Allowed sessions are uploaded to S3 when a Claude Code session ends. [AgentsView](https://github.com/kenn-io/agentsview) reads the bucket directly for browsing, searching, per-user filtering, and analysis. Git storage remains available only as an explicit legacy backend.
+The setup has two skills:
 
-## Quick start
+- `fs-sessions` configures S3, repository privacy rules, and the global
+  `SessionEnd` hook that uploads allowed sessions.
+- `agentsview` provides read-only, evidence-based access to the sessions indexed
+  by an AgentsView service.
+
+You do not need to clone this repository to use either skill.
+
+## 1. Install the skills
+
+You need Node.js/npm for the skill installer and Python 3.10 or newer for the
+`fs-sessions` CLI. Install boto3 into that Python environment if it is not
+already available:
 
 ```bash
-# 1. Clone the skill repository
-git clone git@github.com:durandom/fullsend-sessions.git
+python3 -c 'import boto3' 2>/dev/null || python3 -m pip install --user boto3
+```
 
-# 2. Install the session-sharing skill globally
+Install both skills globally for Claude Code and Codex:
+
+```bash
 npx skills add -g git@github.com:durandom/fullsend-sessions.git \
-  --skill fs-sessions --agent claude-code codex -y --copy
-
-# 3. Resolve the installed CLI
-FS_SESSIONS="$HOME/.agents/skills/fs-sessions/scripts/fs-sessions"
-
-# 4. Load S3 deployment settings and credentials without printing them
-export S3_BUCKET=team-agent-sessions
-export S3_REGION=eu-central-1
-export AWS_ACCESS_KEY_ID=...
-export AWS_SECRET_ACCESS_KEY=...
-
-# 5. Configure the S3-first backend and a default-deny policy
-"$FS_SESSIONS" config init --machine alice-laptop
-"$FS_SESSIONS" s3 check
-"$FS_SESSIONS" policy allow --origin 'github.com/example-org/*'
-
-# 6. Verify one repository and one real upload, then install the hook
-"$FS_SESSIONS" policy check /absolute/path/to/an/allowed-repository
-"$FS_SESSIONS" share --last
-"$FS_SESSIONS" s3 roots
-"$FS_SESSIONS" hook install
-"$FS_SESSIONS" status
+  --skill fs-sessions agentsview \
+  --agent claude-code codex \
+  --copy -y
 ```
 
-Configuration lives in `~/.config/rhdh-skill/config.json` so it can later move into the RHDH skill without another migration. The hook lives once in `~/.claude/settings.json`; repositories cannot install their own permission to export transcripts.
-
-### Update the skill
-
-The global installation remembers its Git source. Pull the current
-`fs-sessions` version with:
-
-```bash
-npx skills update -g fs-sessions
-```
-
-Start a new Claude Code session after installing or updating so Claude
-discovers the current skill instructions. Confirm the installation when needed
-with:
+Start a new Claude Code or Codex session after installation so the agent loads
+the new skill instructions. Verify the installation with:
 
 ```bash
 npx skills list -g --json
 ```
 
-### Configure through Claude Code
+The deterministic `fs-sessions` CLI is installed with the skill:
 
-Claude can run the policy and hook CLI through the installed skill. For a safe
-initial setup, ask:
-
-> Use fs-sessions to configure S3 session sharing from my current environment.
-> Keep the policy default-deny, confirm the bucket access and machine name,
-> install exactly one global SessionEnd hook, share one test session, and show
-> the resulting AgentsView roots.
-
-Allow another repository with an origin rule:
-
-> Use fs-sessions to allow automatic session sharing for
-> `/absolute/path/to/repository`. Keep default-deny, prefer an origin rule, and
-> show the normalized origin and policy decision afterward.
-
-Inspect an existing setup without changing it:
-
-> Use fs-sessions to show the current configuration and hook status, and
-> explain whether this repository is allowed to export sessions.
-
-For mixed policies, state the broad rule before its narrower exceptions because
-the last matching rule wins:
-
-> Use fs-sessions with default-deny. Allow `github.com/example-org/*`, deny
-> `/work/customer-*`, then allow `/work/customer-sanitized-demo`. Show the
-> ordered rules and verify each affected repository.
-
-## How it works
-
-```
-Session ends → global SessionEnd hook → repository policy check
-  → stages the parent transcript and its complete companion directory
-  → uploads to S3 under <machine>/raw/claude/<project>/
-  → removes the temporary staging copy
+```bash
+FS_SESSIONS="$HOME/.agents/skills/fs-sessions/scripts/fs-sessions"
+"$FS_SESSIONS" --help
 ```
 
-Sessions preserve Claude's AgentsView-compatible layout:
+You can run these commands yourself, or ask the agent to use `fs-sessions` for
+the same workflow.
+
+## 2. Configure the S3 bucket
+
+You need an existing S3 bucket and an AWS identity that can access it. The skill
+does not create cloud resources.
+
+Required permissions are:
+
+| Permission | Purpose |
+| --- | --- |
+| `s3:ListBucket` | Validate access and discover AgentsView roots |
+| `s3:GetObject` | Let AgentsView read transcripts |
+| `s3:PutObject` | Upload transcripts |
+
+Provide credentials through boto3's standard credential chain. For example,
+load them with direnv or another secret-aware environment manager:
+
+```bash
+export S3_BUCKET=team-agent-sessions
+export S3_REGION=eu-central-1
+export AWS_ACCESS_KEY_ID=...
+export AWS_SECRET_ACCESS_KEY=...
+# export AWS_SESSION_TOKEN=...   # only for temporary credentials
+```
+
+An AWS profile also works:
+
+```bash
+export S3_BUCKET=team-agent-sessions
+export S3_REGION=eu-central-1
+export AWS_PROFILE=team-sessions
+```
+
+Initialize the S3 backend with a stable, non-secret machine name. This name is
+also the user/machine filter shown in AgentsView:
+
+```bash
+"$FS_SESSIONS" config init --machine alice-laptop
+"$FS_SESSIONS" config show
+"$FS_SESSIONS" s3 check
+```
+
+Alternatively, pass non-secret deployment metadata explicitly:
+
+```bash
+"$FS_SESSIONS" config init \
+  --bucket team-agent-sessions \
+  --region eu-central-1 \
+  --profile team-sessions \
+  --machine alice-laptop
+```
+
+The configuration is stored in `~/.config/rhdh-skill/config.json`. It contains
+the bucket, region, machine name, and repository policy, but never AWS access or
+secret keys.
+
+## 3. Decide which repositories may share sessions
+
+The repository policy is the privacy boundary. Before every automatic upload,
+the global hook checks the Git repository against this policy.
+
+The recommended policy is a whitelist:
+
+- `default deny` means unmatched repositories are private.
+- `allow` rules opt in only trusted repositories or organizations.
+- Rules are evaluated from top to bottom; the last matching rule wins.
+
+Origin rules work across different checkout paths. SSH and HTTPS remotes are
+normalized to values such as `github.com/example-org/service`:
+
+```bash
+"$FS_SESSIONS" policy default deny
+"$FS_SESSIONS" policy allow --origin 'github.com/example-org/*'
+"$FS_SESSIONS" policy check /absolute/path/to/repository
+```
+
+Path rules are useful for local-only repositories or narrow exceptions:
+
+```bash
+"$FS_SESSIONS" policy allow --path '/work/*'
+"$FS_SESSIONS" policy deny --path '/work/customer-*'
+"$FS_SESSIONS" policy allow --path '/work/customer-sanitized-demo'
+```
+
+In this example, `/work/customer-sanitized-demo` is allowed because its rule is
+the last match. Inspect or remove rules with:
+
+```bash
+"$FS_SESSIONS" policy rules
+"$FS_SESSIONS" policy check /work/customer-sanitized-demo
+"$FS_SESSIONS" policy remove 3
+```
+
+A blacklist reverses the model: `default allow` shares every otherwise
+unmatched Git repository. Use it only when that broad automatic export is
+intentional:
+
+```bash
+"$FS_SESSIONS" policy default allow
+"$FS_SESSIONS" policy deny --path '/work/customer-*'
+```
+
+A checked-out repository cannot grant itself upload permission. It can only opt
+out by adding the following local configuration to `.rhdh/config.json`:
+
+```json
+{"sessions":{"enabled":false}}
+```
+
+## 4. Verify an upload and install the hook
+
+Test the selected repository before enabling automatic sharing:
+
+```bash
+"$FS_SESSIONS" policy check /absolute/path/to/repository
+"$FS_SESSIONS" share --last
+"$FS_SESSIONS" s3 roots
+```
+
+When the policy decision and upload are correct, install exactly one global
+Claude Code `SessionEnd` hook:
+
+```bash
+"$FS_SESSIONS" hook install
+"$FS_SESSIONS" hook status
+"$FS_SESSIONS" status
+```
+
+The hook is stored in `~/.claude/settings.json`. Installation is idempotent and
+replaces older managed session-export hooks while preserving unrelated
+settings. After each allowed Claude Code session ends, it uploads the transcript
+and its companion files under:
 
 ```text
 <machine>/raw/claude/<project>/
@@ -100,137 +186,186 @@ Sessions preserve Claude's AgentsView-compatible layout:
   <session-id>/
     subagents/**
     tool-results/**
-    <other regular companion files>
+    <other companion files>
 ```
 
-The parent transcript gets a metadata header with project, user, and timestamp. Companion files are copied byte-for-byte, including binary attachments; symlinks are skipped. This lets AgentsView connect delegated subagent work to its parent and resolve externalized tool results.
+Denied, unchanged, or malformed sessions are skipped silently. A successful
+upload produces a short Claude Code system message.
 
-After an upload succeeds, Claude Code shows a message such as `fs-sessions: exported and uploaded 3 session files to S3 for example/session-id.` Denied or unchanged sessions stay quiet, and the hook never reports a backend upload that failed.
-
-## Repository policy
-
-Automatic sharing fails closed: missing or malformed configuration, non-Git directories, and unmatched repositories under `default: deny` are skipped silently. Rules are evaluated in order and the last matching rule wins.
+To remove the global hook later:
 
 ```bash
-# Whitelist an organization.
-"$FS_SESSIONS" policy default deny
-"$FS_SESSIONS" policy allow --origin 'github.com/example-org/*'
-
-# Exclude sensitive paths, then allow one sanitized exception.
-"$FS_SESSIONS" policy deny --path '/work/customer-*'
-"$FS_SESSIONS" policy allow --path '/work/customer-sanitized-demo'
-
-"$FS_SESSIONS" policy rules
-"$FS_SESSIONS" policy check /work/customer-sanitized-demo
+"$FS_SESSIONS" hook uninstall
 ```
 
-Origin rules normalize SSH and HTTPS remotes to `host/owner/repository`. Path rules match the canonical Git root. A repository may opt out with `.rhdh/config.json` containing `{"sessions":{"enabled":false}}`, but local configuration cannot opt a repository into sharing.
+## 5. Use `fs-sessions` through your agent
 
-## CLI
+Examples for Claude Code or Codex:
 
-List or explicitly share sessions without the automatic-hook policy:
+Initial setup:
+
+> Use fs-sessions to configure S3 session sharing from my current environment.
+> Keep the policy default-deny, verify bucket access and the machine name, allow
+> this repository, upload one test session, and install exactly one global hook.
+
+Allow an organization:
+
+> Use fs-sessions to allow all repositories from
+> `github.com/example-org/*`. Show the ordered rules and explain the decision
+> for the current repository afterward.
+
+Deny a sensitive path:
+
+> Use fs-sessions to deny session sharing for `/work/customer-*`, then verify
+> that the current repository cannot upload.
+
+Inspect without changing anything:
+
+> Use fs-sessions to show the current S3 configuration, repository-policy
+> decision, hook status, and AgentsView roots without changing anything.
+
+Manual CLI operations remain available:
 
 ```bash
 "$FS_SESSIONS" list
 "$FS_SESSIONS" share --last
-"$FS_SESSIONS" share --transcript /path/to/session.jsonl --cwd /path/to/project
+"$FS_SESSIONS" share \
+  --transcript /path/to/session.jsonl \
+  --cwd /path/to/project
 ```
 
-Inspect and manage the hook:
+## 6. Start AgentsView from S3
+
+This step is needed once for the person or service hosting the shared web UI.
+Other users only need its URL. No checkout of this repository is required.
+
+First discover the exact S3 roots:
 
 ```bash
-"$FS_SESSIONS" hook status
-"$FS_SESSIONS" hook install
-"$FS_SESSIONS" hook uninstall
+"$FS_SESSIONS" s3 check
+"$FS_SESSIONS" s3 roots
 ```
 
-When migrating an old project-local hook, verify the global policy and hook first. Then remove only the managed command while preserving unrelated project settings:
+Create a persistent AgentsView data directory and add every returned root to
+its configuration:
 
 ```bash
-"$FS_SESSIONS" hook uninstall \
-  --settings /path/to/project/.claude/settings.json
+export AGENTSVIEW_DATA="$HOME/.local/share/fullsend-agentsview"
+mkdir -p "$AGENTSVIEW_DATA"
+${EDITOR:-vi} "$AGENTSVIEW_DATA/config.toml"
 ```
 
-## AgentsView
+Example `config.toml`:
 
-Browse shared sessions in a web UI:
+```toml
+claude_project_dirs = [
+  "s3://team-agent-sessions/alice-laptop/raw/claude",
+  "s3://team-agent-sessions/bob-workstation/raw/claude",
+]
+```
+
+Start the published AgentsView container on loopback:
 
 ```bash
-just sessions-s3                      # start AgentsView directly from S3
-just down-s3                          # stop S3 viewer and remove derived index
+podman run -d --name agentsview --pull=always \
+  -p 127.0.0.1:8081:8080 \
+  -e AWS_ACCESS_KEY_ID \
+  -e AWS_SECRET_ACCESS_KEY \
+  -e AWS_SESSION_TOKEN \
+  -e AWS_REGION="$S3_REGION" \
+  -e AWS_S3_ENDPOINT \
+  -v "$AGENTSVIEW_DATA:/data" \
+  ghcr.io/kenn-io/agentsview:latest
 ```
 
-For LAN access: `AGENTSVIEW_HOST=$(hostname).local just sessions`
+Open <http://127.0.0.1:8081>. The S3 objects remain the source of truth;
+`$AGENTSVIEW_DATA` contains only AgentsView configuration and its derived index.
 
-## Fullsend runs
-
-Fetch and browse [fullsend](https://github.com/redhat-developer/rhdh-agentic) agent runs from GitHub Actions:
+Container lifecycle commands:
 
 ```bash
-just fetch                            # download runs from default repos
-just up                               # fetch + start AgentsView
-just local                            # import local fullsend runs (auto-discovers from $TMPDIR)
-just local /path/to/output            # import from explicit path
+podman logs -f agentsview
+podman stop agentsview
+podman start agentsview
+podman rm -f agentsview
 ```
 
-## Skill commands
-
-Once installed, use `/fs-sessions` in any Claude Code session:
-
-| Command | Description |
-|---------|-------------|
-| `/fs-sessions setup` | Configure S3, credentials, machine, policy, and hook |
-| `/fs-sessions policy` | Allow, deny, list, or explain repository rules |
-| `/fs-sessions hook` | Install, inspect, migrate, or remove the global hook |
-| `/fs-sessions status` | Check S3 config, policy, credentials, and hook state |
-| `/fs-sessions share` | List or explicitly upload a local session |
-| `/fs-sessions s3` | Validate access or discover AgentsView roots |
-| `/fs-sessions view` | Start AgentsView |
-
-The repository also contains an `agentsview` skill for factual, read-only access
-to a local AgentsView archive through its CLI:
+For AWS profiles instead of exported keys, mount the AWS configuration
+read-only and pass the profile name:
 
 ```bash
-npx skills add git@github.com:durandom/fullsend-sessions.git --skill agentsview
+-e AWS_PROFILE=team-sessions -v "$HOME/.aws:/root/.aws:ro"
 ```
 
-It can find and inspect sessions, search historical evidence, and retrieve
-health, usage, activity, and stats data. Session-quality analysis and workflow
-recommendations are intentionally out of scope.
+Keep the default loopback binding unless you deliberately configure AgentsView
+authentication and a public URL for remote access.
 
-## Pod
+## 7. Query sessions with the `agentsview` skill
 
-This repo is home to the RHDH AI-Augmented Pod — a focused sub-team experimenting with AI-driven engineering workflows. See [docs/](docs/) for the charter and operating principles.
+Point the skill at the running container endpoint:
 
-## Directory layout
-
-```
-docs/                                 # Pod charter and commandments
-meetings/transcripts/                 # Google Meet transcript exports
-scripts/
-  fetch-fullsend-runs.sh              # download fullsend runs from GH Actions
-  import-local-run.sh                 # import local fullsend runs
-skills/fs-sessions/                   # agent skill (npx skills add)
-  SKILL.md                            # skill definition
-  scripts/
-    export-session                    # legacy Python hook compatibility entry point
-    fs-sessions                       # policy, hook, and sharing CLI
-    export-session.sh                 # legacy Bash hook
-    fs-sessions.sh                    # legacy Bash CLI
-  references/                         # skill command references
-skills/agentsview/                    # factual local AgentsView retrieval skill
-  SKILL.md                            # router and shared guardrails
-  references/                         # status, find, inspect, search, report
-  scripts/preflight.py                # read-only CLI capability check
+```bash
+export AGENTSVIEW_SERVER_URL=http://127.0.0.1:8081
 ```
 
-## Prerequisites
+The skill is read-only by default. It can find sessions, inspect messages and
+tool calls, search historical decisions, and report stored usage or activity.
+Ask naturally from Claude Code or Codex:
 
-- Python 3.10+, `git`, and `boto3`
-- `podman` (for AgentsView)
-- `gh` (for fetching fullsend runs)
+Check readiness:
+
+> Use agentsview to check whether the container is healthy and list the
+> available projects.
+
+Find sessions:
+
+> Use agentsview to find the latest sessions for project `service-catalog`.
+
+Inspect one session:
+
+> Use agentsview to inspect session `<session-id>` and show the relevant tool
+> calls with message evidence.
+
+Search historical evidence:
+
+> Use agentsview to search past sessions for the decision to use S3 instead of
+> Git and cite the matching session IDs and message ordinals.
+
+The skill connects its host CLI to the container and does not start a second
+AgentsView database. If the host CLI is missing, it will explain the verified
+installation and ask before writing it to `~/.local/bin/agentsview`.
+
+## Update the skills
+
+```bash
+npx skills update -g fs-sessions agentsview
+```
+
+Start a new agent session afterward so updated instructions are loaded.
+
+## Troubleshooting
+
+```bash
+"$FS_SESSIONS" config show    # saved non-secret configuration
+"$FS_SESSIONS" s3 check       # bucket and ListBucket access
+"$FS_SESSIONS" s3 roots       # uploaded machine roots
+"$FS_SESSIONS" policy check . # final policy decision for this repository
+"$FS_SESSIONS" hook status    # installed global hook
+"$FS_SESSIONS" status         # combined status
+```
+
+Common causes:
+
+- `AccessDenied` during `s3 check`: the active identity lacks `s3:ListBucket`.
+- Upload failure: verify `s3:PutObject` for the configured bucket or prefix.
+- AgentsView shows no sessions: verify `s3:GetObject`, compare `config.toml`
+  with `s3 roots`, then upload one test session.
+- A repository does not upload: run `policy check` and inspect the last matching
+  rule.
 
 ## Development
+
+Repository contributors can clone the project and run:
 
 ```bash
 uv sync
