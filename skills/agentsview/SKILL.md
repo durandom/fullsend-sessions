@@ -1,15 +1,15 @@
 ---
 name: agentsview
 description: >-
-  Retrieves factual information from local AgentsView session archives. Use
-  when asked to find, list, or read recorded coding-agent sessions, inspect
-  transcripts or tool calls, recover prior decisions, report AgentsView health,
-  usage, activity, or stats, or check whether local AgentsView is available.
-  Also use when the user asks what happened in a past agent session, invokes
-  agentsview directly, wants to install or upgrade its CLI, or wants to try or
-  verify the local container integration. This skill retrieves evidence; it
-  does not evaluate session quality or recommend process improvements.
-compatibility: Requires Python 3 and a container-backed AgentsView service.
+  Sets up, starts, verifies, and queries a container-backed AgentsView session
+  archive. Use when asked to start or stop a local S3-backed AgentsView service,
+  verify its web UI, install or upgrade its host CLI, find or inspect recorded
+  coding-agent sessions, search transcripts or tool calls, recover prior
+  decisions, or report AgentsView health, usage, activity, or stats. Also use
+  when the user invokes agentsview directly or wants to try the local container
+  integration. Retrieval is evidence-only; it does not evaluate session quality
+  or recommend process improvements. Requires Python 3; local service setup
+  also requires Podman.
 ---
 
 <cli_setup>
@@ -21,9 +21,9 @@ python scripts/preflight.py --json
 ```
 
 Consume the complete JSON output. Do not pipe it through `head`, `tail`, or
-`grep`. If `available` is false, load `references/setup.md` when the user asked
-for setup or installation; otherwise report the supplied remediation and stop.
-If `working` is false for another reason, report the remediation and stop.
+`grep`. For setup, start, or installation intent, load `references/setup.md`
+when `available` or `working` is false and use the supplied remediation as
+diagnostic input. For every other intent, report that remediation and stop.
 
 Record the returned absolute `binary` as `AGENTSVIEW_BIN`, `server_url` as
 `AGENTSVIEW_SERVER_URL`, and an optional `server_token_file`. A successful
@@ -65,7 +65,9 @@ Use read commands only. Do not run `prune`, `import`, `update`, PostgreSQL or
 DuckDB writes, secret reveal, or other administrative commands. Ask before an
 explicit container/session sync; use `--full` only when the user specifically
 agrees to a full resync. Installing or upgrading the host CLI writes outside
-the repository, so run it only after the user agrees.
+the repository, so run it only after the user agrees. Creating, replacing,
+starting, stopping, or removing a container is allowed only when the user
+explicitly asks for that lifecycle operation or setup outcome.
 </principle>
 
 <principle name="container_authority">
@@ -74,6 +76,13 @@ Pass the preflight's `--server` arguments to every host `session` command and
 keep `AGENTSVIEW_NO_DAEMON=1`. Run commands that lack upstream `--server`
 support (`projects`, `stats`, `activity`, and `usage daily`) through the
 existing compose service, never against a host database.
+</principle>
+
+<principle name="runtime_secrets">
+Keep AgentsView runtime configuration outside Git. Never reveal or commit
+`auth_token`, `cursor_secret`, AWS credentials, or token-file contents. Pass
+token-file paths to clients and preserve existing generated values during
+container restarts.
 </principle>
 
 <principle name="structured_queries">
@@ -108,7 +117,7 @@ not reproduce unrelated transcript content.
 
 ## What would you like to retrieve?
 
-1. **Setup** — install or upgrade the host CLI and connect it to the container
+1. **Setup/start** — start local S3 AgentsView or connect to an existing service
 2. **Status** — check the host CLI, container endpoint, and available projects
 3. **Find sessions** — list and filter sessions by metadata or signals
 4. **Inspect a session** — read metadata, messages, tool calls, health, or usage
@@ -127,8 +136,8 @@ to explore options without running a check.
 
 | Response or intent | Workflow |
 |---|---|
-| 1, "setup", "install CLI", "upgrade CLI", "configure container" | `references/setup.md` |
-| 2, "status", "is AgentsView running", "projects" | `references/status.md` |
+| 1, "setup", "start", "stop", "install CLI", "configure container" | `references/setup.md` |
+| 2, "status", "web UI", "is AgentsView running", "projects" | `references/status.md` |
 | 3, "find", "list", "recent sessions", "filter sessions" | `references/find-sessions.md` |
 | 4, "inspect", "read session", "transcript", "tool calls", session ID | `references/inspect-session.md` |
 | 5, "search", "history", "have we done this", "why did we" | `references/search-history.md` |
@@ -140,7 +149,7 @@ to explore options without running a check.
 
 | Reference | Load when... |
 |---|---|
-| `references/setup.md` | Installing/upgrading the CLI or connecting it to the container |
+| `references/setup.md` | Starting local S3 AgentsView, installing the CLI, or connecting to a service |
 | `references/status.md` | Checking CLI/container readiness or discovering projects |
 | `references/find-sessions.md` | Selecting sessions from metadata, dates, or stored signals |
 | `references/inspect-session.md` | Reading one known session in detail |
@@ -175,6 +184,7 @@ Show raw JSON or the full command transcript only when the user asks for it.
 - Heuristic fields are attributed to AgentsView and not independently judged.
 - No explicit sync or administrative mutation ran without approval.
 - No host AgentsView daemon was started or used.
+- Local setup stores generated secrets outside Git and verifies the web UI.
 - Missing or unsupported data is stated rather than inferred.
 - Host session commands use the preflight binary and container server URL.
 
