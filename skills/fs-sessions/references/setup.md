@@ -1,4 +1,4 @@
-# S3-first setup or migration
+# S3-only setup or migration
 
 Use this workflow for a new installation or migration from Git-backed sharing.
 Load `references/s3.md` directly from `SKILL.md` for credential and IAM gates.
@@ -6,19 +6,20 @@ The skill configures an existing bucket; it does not provision cloud resources.
 If no bucket or authorized identity exists, ask the user to obtain them from
 their cloud administrator before continuing.
 
-## 1. Resolve the machine name
+## 1. Resolve the user identity
 
-Use a stable, non-secret user or workstation label such as `alice-laptop`.
+Use a stable, non-secret user label such as `alice`.
 Prefer an existing `FS_SESSIONS_MACHINE`; otherwise normalize
 `git config user.name` to lowercase hyphenated form. Confirm it with the user
-when it is ambiguous because it becomes the AgentsView machine filter.
+when it is ambiguous because it becomes the AgentsView machine filter. Machine
+means the actor that produced the session, not necessarily a physical host.
 
 ## 2. Initialize S3 configuration
 
 With `S3_BUCKET`, `S3_REGION`, and boto3 credentials already in the environment:
 
 ```bash
-"$FS" config init --machine alice-laptop
+"$FS" config init --machine alice
 ```
 
 Or pass non-secret deployment metadata explicitly:
@@ -27,12 +28,12 @@ Or pass non-secret deployment metadata explicitly:
 "$FS" config init \
   --bucket team-agent-sessions \
   --region eu-central-1 \
-  --machine alice-laptop \
+  --machine alice \
   --profile team-sessions
 ```
 
-This sets `backends: ["s3"]`, keeps the policy default-deny, preserves unrelated
-global configuration, and never stores access keys or secret keys.
+This removes legacy Git storage keys, keeps policy default-deny, preserves
+unrelated global configuration, and never stores access keys or secret keys.
 
 ## 3. Pass the S3 gates
 
@@ -41,8 +42,8 @@ global configuration, and never stores access keys or secret keys.
 "$FS" s3 check
 ```
 
-Stop if configuration contains a Git backend, credentials appear in the saved
-JSON, or `s3 check` cannot list the configured bucket. Use the error to identify
+Stop if credentials appear in the saved JSON or `s3 check` cannot list the
+configured bucket. Use the error to identify
 the missing environment/profile or IAM permission before installing the hook.
 
 ## 4. Add the initial allow rule
@@ -78,16 +79,5 @@ legacy session hooks.
 ```
 
 Setup is complete when the explicit share reports S3 success, the expected
-machine root appears, the intended repository is allowed, and exactly one
+user machine root appears, the intended repository is allowed, and exactly one
 global managed hook exists.
-
-## Explicit legacy Git mode
-
-Use Git storage only when the user requests it:
-
-```bash
-"$FS" config init --backend git --repo /absolute/path/to/session-repository
-```
-
-Do not silently combine Git and S3; dual writes require an explicit config edit
-and a stated retention reason.

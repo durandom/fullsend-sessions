@@ -1,4 +1,4 @@
-"""Tests for the optional S3 session backend."""
+"""Tests for S3 session storage."""
 
 from __future__ import annotations
 
@@ -8,6 +8,7 @@ from fs_sessions import s3
 class FakeClient:
     def __init__(self, objects=None):
         self.uploads = []
+        self.puts = []
         self.objects = objects or []
 
     def upload_file(self, path, bucket, key):
@@ -15,6 +16,16 @@ class FakeClient:
 
     def list_objects_v2(self, **_kwargs):
         return {"Contents": [{"Key": key} for key in self.objects]}
+
+    def head_object(self, Bucket, Key):
+        if Key not in self.objects:
+            error = RuntimeError("missing")
+            error.response = {"Error": {"Code": "404"}}
+            raise error
+        return {"Bucket": Bucket, "Key": Key}
+
+    def put_object(self, **kwargs):
+        self.puts.append(kwargs)
 
 
 def test_upload_preserves_complete_session_family_layout(tmp_path, monkeypatch):
@@ -70,3 +81,53 @@ def test_check_and_discover_agentsview_roots(monkeypatch):
         "s3://sessions/team/alice/raw/claude",
         "s3://sessions/team/bob/raw/claude",
     ]
+
+
+def test_generic_object_checks_and_ordered_upload(monkeypatch):
+    client = FakeClient(["existing"])
+    monkeypatch.setattr(s3, "_get_client", lambda _config: client)
+    config = {"bucket": "sessions"}
+
+    assert s3.object_exists(config, "existing") is True
+    assert s3.object_exists(config, "missing") is False
+
+    s3.upload_objects(
+        config,
+        [("child.jsonl", b"child"), ("parent.jsonl", b"parent")],
+    )
+
+    assert [item["Key"] for item in client.puts] == [
+        "child.jsonl",
+        "parent.jsonl",
+    ]
+    assert all(item["ContentType"] == "application/x-ndjson" for item in client.puts)
+
+
+def test_agentsview_config_updates_roots_and_preserves_secrets(tmp_path, monkeypatch):
+    data_dir = tmp_path / "agentsview"
+    data_dir.mkdir()
+    config_file = data_dir / "config.toml"
+    config_file.write_text(
+        'auth_token = "keep-me"\n'
+        'claude_project_dirs = ["s3://old/old/raw/claude"]\n'
+        'cursor_secret = "also-keep-me"\n'
+    )
+    monkeypatch.setattr(
+        s3,
+        "discover_claude_roots",
+        lambda _config: [
+            "s3://sessions/fs-code/raw/claude",
+            "s3://sessions/user/raw/claude",
+        ],
+    )
+
+    result = s3.write_agentsview_config({"bucket": "sessions"}, data_dir)
+
+    assert result["count"] == 2
+    content = config_file.read_text()
+    assert 'auth_token = "keep-me"' in content
+    assert 'cursor_secret = "also-keep-me"' in content
+    assert "s3://old/old/raw/claude" not in content
+    assert '  "s3://sessions/fs-code/raw/claude",' in content
+    assert '  "s3://sessions/user/raw/claude",' in content
+    assert config_file.stat().st_mode & 0o777 == 0o600

@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 import json
-import os
-import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -21,30 +19,6 @@ class CLIResult:
 @pytest.fixture()
 def isolated_env(tmp_path, monkeypatch):
     """Set up an isolated test environment."""
-    sessions_repo = tmp_path / "sessions-repo"
-    sessions_repo.mkdir()
-    (sessions_repo / "sessions").mkdir()
-
-    subprocess.run(["git", "init", "-q"], cwd=sessions_repo, check=True)
-    subprocess.run(
-        ["git", "config", "user.email", "test@test.com"],
-        cwd=sessions_repo,
-        check=True,
-    )
-    subprocess.run(
-        ["git", "config", "user.name", "Test User"],
-        cwd=sessions_repo,
-        check=True,
-    )
-    (sessions_repo / ".gitkeep").touch()
-    subprocess.run(["git", "add", "."], cwd=sessions_repo, check=True)
-    subprocess.run(
-        ["git", "commit", "-q", "-m", "chore: init"],
-        cwd=sessions_repo,
-        check=True,
-        env={**os.environ, "SKIP_COMMIT_MSG_HOOK": "1"},
-    )
-
     claude_projects = tmp_path / "claude-projects"
     claude_projects.mkdir()
 
@@ -54,9 +28,10 @@ def isolated_env(tmp_path, monkeypatch):
     config_file.write_text(
         json.dumps(
             {
-                "repos": {"sessions": str(sessions_repo)},
                 "sessions": {
                     "enabled": True,
+                    "machine": "test-user",
+                    "s3": {"bucket": "team-sessions", "region": "eu-test-1"},
                     "policy": {"default": "deny", "rules": []},
                 },
             }
@@ -68,7 +43,6 @@ def isolated_env(tmp_path, monkeypatch):
     monkeypatch.setattr("fs_sessions.discovery.CLAUDE_PROJECTS_DIR", claude_projects)
 
     return {
-        "sessions_repo": sessions_repo,
         "claude_projects": claude_projects,
         "config_file": config_file,
     }

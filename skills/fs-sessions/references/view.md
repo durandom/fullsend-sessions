@@ -12,24 +12,30 @@ Pass the same boto3 credential environment to the container and remove
 `CLAUDE_PROJECTS_DIR`, because that environment variable overrides the root
 array.
 
-For `fullsend-sessions`, start the configured S3 viewer with:
+Use the deterministic writer to preserve generated secrets and unrelated
+settings while updating only the root array:
 
 ```bash
-direnv exec /path/to/fullsend-sessions \
-  just -d /path/to/fullsend-sessions sessions-s3
+"$FS" s3 agentsview-config \
+  --data-dir "$HOME/.local/share/fullsend-agentsview"
 ```
 
-This uses `compose.s3.yaml`, keeps its derived index in a separate container
-volume, and reads the AWS credentials from the environment. Stop it and remove
-only that derived S3 index with:
+For a `fullsend-sessions` checkout, start the configured S3 viewer with:
 
 ```bash
-direnv exec /path/to/fullsend-sessions \
-  just -d /path/to/fullsend-sessions down-s3
+direnv exec /path/to/fullsend-sessions just -d /path/to/fullsend-sessions up
 ```
 
-To force a complete re-index, remove only the derived AgentsView index volume
-before restarting. Never delete or rewrite S3 transcript objects as part of an
-index rebuild.
+This uses the private `AGENTSVIEW_DATA` directory and reads AWS credentials from
+the environment. Stop it while preserving the derived index with:
 
-Sessions use the configured machine segment as the AgentsView machine filter.
+```bash
+direnv exec /path/to/fullsend-sessions just -d /path/to/fullsend-sessions down
+```
+
+To force a complete re-index, follow the AgentsView setup workflow and remove
+only derived index files from the private runtime directory. Never delete or
+rewrite S3 transcript objects as part of an index rebuild.
+
+Interactive sessions use the configured user identity as the machine filter;
+Fullsend sessions use `fs-<agent>`.

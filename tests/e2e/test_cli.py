@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import subprocess
 from pathlib import Path
 
 from fs_sessions.cli import main
@@ -20,7 +19,7 @@ def test_list_emits_discovered_sessions(isolated_env, capsys):
     assert payload["sessions"][0]["title"] == "My Great Session"
 
 
-def test_share_last_commits_only_transcript(isolated_env, monkeypatch, capsys):
+def test_share_last_uploads_complete_session_family(isolated_env, monkeypatch, capsys):
     transcript = make_transcript(isolated_env["claude_projects"])
     companions = transcript.parent / transcript.stem
     subagent = companions / "subagents" / "agent-child.jsonl"
@@ -29,45 +28,26 @@ def test_share_last_commits_only_transcript(isolated_env, monkeypatch, capsys):
     tool_result.parent.mkdir(parents=True)
     subagent.write_text('{"type":"assistant"}\n')
     tool_result.write_text("full output")
-    repo = isolated_env["sessions_repo"]
-    unrelated = repo / "unrelated"
-    unrelated.write_text("keep staged")
-    subprocess.run(["git", "add", "unrelated"], cwd=repo, check=True)
-    monkeypatch.setattr("fs_sessions.cli._username", lambda: "test-user")
+    uploaded: dict[str, bytes] = {}
+
+    def fake_upload(_config, paths, base, username, project):
+        for path in paths:
+            relative = path.relative_to(base / "sessions")
+            session_relative = Path(*relative.parts[1:]).as_posix()
+            uploaded[f"{username}/{project}/{session_relative}"] = path.read_bytes()
+        return True
+
+    monkeypatch.setattr("fs_sessions.s3.upload_session", fake_upload)
 
     assert main(["share", "--last"]) == 0
 
     payload = json.loads(capsys.readouterr().out)
     assert payload["changed"] is True
-    exported = repo / "sessions" / "test-user_myproject" / transcript.name
-    assert exported.exists()
-    exported_family = exported.with_suffix("")
-    assert (
-        exported_family / "subagents" / subagent.name
-    ).read_text() == subagent.read_text()
-    assert (exported_family / "tool-results" / tool_result.name).read_text() == (
-        tool_result.read_text()
-    )
-    committed = subprocess.run(
-        ["git", "show", "--pretty=", "--name-only", "HEAD"],
-        cwd=repo,
-        capture_output=True,
-        text=True,
-        check=True,
-    ).stdout.splitlines()
-    assert set(committed) == {
-        exported.relative_to(repo).as_posix(),
-        (exported_family / "subagents" / subagent.name).relative_to(repo).as_posix(),
-        (exported_family / "tool-results" / tool_result.name)
-        .relative_to(repo)
-        .as_posix(),
+    assert set(uploaded) == {
+        "test-user/myproject/abc-123.jsonl",
+        "test-user/myproject/abc-123/subagents/agent-child.jsonl",
+        "test-user/myproject/abc-123/tool-results/tool-1.txt",
     }
-    assert (
-        subprocess.run(
-            ["git", "diff", "--cached", "--quiet", "--", "unrelated"], cwd=repo
-        ).returncode
-        == 1
-    )
 
 
 def test_s3_first_init_uses_environment(tmp_path, monkeypatch, capsys):
@@ -80,7 +60,7 @@ def test_s3_first_init_uses_environment(tmp_path, monkeypatch, capsys):
     assert main(["config", "init"]) == 0
 
     payload = json.loads(capsys.readouterr().out)
-    assert payload["backends"] == ["s3"]
+    assert payload["storage"] == "s3"
     assert payload["sessions"]["s3"] == {
         "bucket": "team-sessions",
         "region": "eu-test-1",
@@ -94,7 +74,6 @@ def test_s3_share_cleans_staging_directory(isolated_env, monkeypatch, capsys):
     data = json.loads(config_file.read_text())
     data["sessions"].update(
         {
-            "backends": ["s3"],
             "machine": "test-user",
             "s3": {"bucket": "team-sessions", "region": "eu-test-1"},
         }

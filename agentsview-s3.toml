@@ -1,3 +1,0 @@
-auth_token = "6Ikes-Ft3c1FySfK5qk6PGJ05yW_hEdBHssdnHf3W0A"
-claude_project_dirs = ["s3://fullsend-sessions-727533117744-us-east-1-an/christoph-jerolimov/raw/claude", "s3://fullsend-sessions-727533117744-us-east-1-an/marcel-hild/raw/claude"]
-cursor_secret = "bXkRGznFer1EzxKWunk6nU5y9XbmcoAf35PUShjqlME="
