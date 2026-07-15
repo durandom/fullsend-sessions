@@ -1,12 +1,12 @@
 ---
 name: fs-sessions
 description: |
-  Manage and share Claude Code session transcripts through a policy-controlled global SessionEnd hook and AgentsView. Use when asked to configure session sharing, install or migrate the session hook globally, whitelist or blacklist repositories, diagnose why a repository is or is not exporting, share/list/push/pull sessions, or start AgentsView for team transcripts. Also use for requests mentioning fs-sessions, FULLSEND_SESSIONS_REPO, session export, transcript sharing, or repository-specific session privacy.
+  Manage and share Claude Code transcripts through an S3-first, policy-controlled global hook and AgentsView. Use when asked to configure an S3 session bucket or credentials, install or migrate session sharing, whitelist or blacklist repositories, diagnose missing uploads, share or list sessions, discover AgentsView S3 roots, or start the team transcript viewer. Also use for fs-sessions, session export, transcript privacy, SessionEnd hooks, or legacy Git-backed session storage.
 ---
 
 # fs-sessions
 
-Share Claude Code transcripts through a global, fail-closed repository policy.
+Share Claude Code transcripts to S3 through a global, fail-closed repository policy.
 
 <cli_setup>
 
@@ -27,8 +27,10 @@ Consume complete command output. Do not reimplement JSON or Claude settings edit
 - **Fail closed** — malformed/missing config, non-Git directories, unmatched repositories under `default: deny`, and export errors all skip silently in the SessionEnd hook.
 - **Rules are ordered** — the last matching `allow` or `deny` rule wins. This supports whitelist, blacklist, and narrow exceptions with one explainable model.
 - **One global hook** — install into `~/.claude/settings.json`. After verifying it, remove legacy project-local `export-session.sh` hooks so a session cannot be exported twice.
-- **Export the complete session family** — preserve the main transcript plus its nested subagents, tool results, and other regular companion files. Keeping Claude's relative layout lets AgentsView link delegated work to its parent session.
-- **Transcripts remain append-only in Git** — the exporter may refresh its copied file when the source grows, but do not manually alter shared transcript content.
+- **S3 is the default backend** — new setup stores only non-secret bucket metadata in the global config. Git storage is an explicit legacy mode.
+- **Credentials stay outside skill config** — use the standard boto3 environment/profile chain because secrets copied into config or conversation context are easy to leak.
+- **Export the complete session family** — preserve the main transcript plus nested subagents, tool results, and regular companion files. The `<machine>/raw/claude/<project>/...` layout gives AgentsView per-user filtering and parent-child links.
+- **Treat transcripts as append-only source records** — the exporter may refresh an object when its source grows, but do not manually alter shared transcript content.
 
 </essential_principles>
 
@@ -36,12 +38,12 @@ Consume complete command output. Do not reimplement JSON or Claude settings edit
 
 ## What would you like to do?
 
-1. **Setup or migrate** — configure the shared repo, safe policy, and global hook
+1. **Setup or migrate** — configure S3, credentials, safe policy, and global hook
 2. **Policy** — allow, deny, list rules, or explain a repository decision
 3. **Hook** — install, inspect, or uninstall the global SessionEnd hook
 4. **Status** — inspect configuration, hook, policy, and stored sessions
 5. **Share/list** — explicitly export or list local sessions
-6. **Push/pull** — synchronize the shared sessions repository
+6. **S3** — validate access or discover AgentsView roots
 7. **View** — start or stop AgentsView
 
 If the user already stated an operation, route directly without repeating this menu. Otherwise wait for their selection.
@@ -52,13 +54,14 @@ If the user already stated an operation, route directly without repeating this m
 
 | Response | Reference |
 |----------|-----------|
-| 1, "setup", "migrate", "global install" | `references/setup.md` |
+| 1, "setup", "migrate", "global install" | `references/setup.md` + `references/s3.md` |
 | 2, "policy", "allow", "deny", "whitelist", "blacklist" | `references/policy.md` |
 | 3, "hook", "SessionEnd", "install hook" | `references/hook.md` |
 | 4, "status", "configured?", "why not exporting?" | `references/status.md` |
 | 5, "share", "export", "list sessions" | `references/share.md` |
-| 6, "push", "pull", "sync" | `references/sync.md` |
-| 7, "view", "AgentsView", "browse sessions" | `references/view.md` |
+| 6, "S3", "bucket", "credentials", "roots" | `references/s3.md` |
+| 7, "view", "AgentsView", "browse sessions" | `references/view.md` + `references/s3.md` |
+| "legacy Git", "push", "pull" | `references/sync.md` |
 
 </routing>
 
@@ -67,6 +70,7 @@ If the user already stated an operation, route directly without repeating this m
 | Reference | Load when | Path |
 |-----------|-----------|------|
 | setup | First installation or legacy-hook migration | `references/setup.md` |
+| S3 | Credential gates, access checks, AgentsView roots | `references/s3.md` |
 | policy | Editing or explaining repository rules | `references/policy.md` |
 | hook | Hook-only lifecycle work | `references/hook.md` |
 | status | Diagnosing the current state | `references/status.md` |
@@ -78,9 +82,10 @@ If the user already stated an operation, route directly without repeating this m
 
 <success_criteria>
 
-- Configuration preserves unrelated `rhdh-skill` keys and validates successfully.
+- New configuration selects only S3, preserves unrelated `rhdh-skill` keys, and stores no credentials.
+- `s3 check` confirms bucket listing and `s3 roots` returns every uploaded machine.
 - `policy check <repo>` reports the intended action and matching rule.
 - Exactly one managed hook exists globally; legacy local hooks are absent after migration.
-- A denied repository produces no exported file; an allowed repository exports its complete session family without unrelated files.
+- A denied repository produces no object; an allowed repository uploads its complete session family without unrelated files.
 
 </success_criteria>

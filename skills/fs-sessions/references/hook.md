@@ -12,9 +12,9 @@ The global settings file defaults to `~/.claude/settings.json`. Use `--settings 
 
 `hook install` is idempotent: it replaces any managed Python hook or legacy command containing `export-session`, then writes one command pointing to this installed skill's script.
 
-The installer gives the command a 30-second timeout. Claude Code otherwise allows `SessionEnd` hooks only 1.5 seconds by default, which is too short for a complete session-family copy followed by Git synchronization.
+The installer gives the command a 30-second timeout. Claude Code otherwise allows `SessionEnd` hooks only 1.5 seconds by default, which is too short for a complete session-family copy and S3 upload.
 
-The internal `hook run` command reads Claude's SessionEnd JSON from stdin. Do not invoke it without a test event. It intentionally exits successfully and silently for policy denials, malformed events, unavailable Git remotes, or export/push failures so Claude shutdown cannot be blocked.
+The internal `hook run` command reads Claude's SessionEnd JSON from stdin. Do not invoke it without a test event. It intentionally exits successfully and silently for policy denials, malformed events, missing credentials, or upload failures so Claude shutdown cannot be blocked.
 
 After an upload succeeds, the hook emits a Claude Code `systemMessage` with the project, session ID, uploaded destinations, and file count. Denied or unchanged sessions emit nothing, and a failed backend never claims that its upload succeeded.
 

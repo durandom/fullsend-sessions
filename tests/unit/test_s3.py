@@ -6,11 +6,15 @@ from fs_sessions import s3
 
 
 class FakeClient:
-    def __init__(self):
+    def __init__(self, objects=None):
         self.uploads = []
+        self.objects = objects or []
 
     def upload_file(self, path, bucket, key):
         self.uploads.append((path, bucket, key))
+
+    def list_objects_v2(self, **_kwargs):
+        return {"Contents": [{"Key": key} for key in self.objects]}
 
 
 def test_upload_preserves_complete_session_family_layout(tmp_path, monkeypatch):
@@ -41,3 +45,28 @@ def test_upload_preserves_complete_session_family_layout(tmp_path, monkeypatch):
         "team/user/raw/claude/project/session/subagents/agent-child.jsonl",
         "team/user/raw/claude/project/session/tool-results/tool-1.txt",
     }
+
+
+def test_check_and_discover_agentsview_roots(monkeypatch):
+    client = FakeClient(
+        [
+            "team/alice/raw/claude/project/a.jsonl",
+            "team/bob/raw/claude/project/b.jsonl",
+            "team/alice/raw/claude/project/a/tool-results/tool.txt",
+            "team/ignored/raw/codex/2026/01/01/rollout.jsonl",
+        ]
+    )
+    monkeypatch.setattr(s3, "_get_client", lambda _config: client)
+    config = {"bucket": "sessions", "region": "eu-test-1", "prefix": "team"}
+
+    assert s3.check_access(config) == {
+        "success": True,
+        "bucket": "sessions",
+        "region": "eu-test-1",
+        "can_list": True,
+        "has_objects": True,
+    }
+    assert s3.discover_claude_roots(config) == [
+        "s3://sessions/team/alice/raw/claude",
+        "s3://sessions/team/bob/raw/claude",
+    ]

@@ -57,6 +57,35 @@ def test_initialize_preserves_rhdh_config(tmp_path, monkeypatch):
     assert saved["sessions"]["policy"] == {"default": "deny", "rules": []}
 
 
+def test_initialize_s3_is_default_backend_and_stores_no_credentials(
+    tmp_path, monkeypatch
+):
+    path = tmp_path / "config.json"
+    path.write_text(json.dumps({"github": {"username": "octo"}}))
+    monkeypatch.setenv(config.USER_CONFIG_ENV, str(path))
+
+    saved = config.initialize_s3_sessions_config(
+        bucket="team-sessions",
+        region="eu-central-1",
+        machine="test-user",
+    )
+
+    assert saved["github"] == {"username": "octo"}
+    assert saved["sessions"]["backends"] == ["s3"]
+    assert saved["sessions"]["machine"] == "test-user"
+    assert saved["sessions"]["s3"] == {
+        "bucket": "team-sessions",
+        "region": "eu-central-1",
+    }
+    assert "access_key" not in json.dumps(saved).lower()
+
+
+@pytest.mark.parametrize("backends", [[], ["unknown"], "s3"])
+def test_invalid_backends_fail_closed(backends):
+    with pytest.raises(config.ConfigError):
+        config.get_backends({"sessions": {"backends": backends}})
+
+
 @pytest.mark.parametrize(
     ("url", "expected"),
     [

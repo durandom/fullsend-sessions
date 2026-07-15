@@ -1,0 +1,14 @@
+services:
+  agentsview:
+    image: ghcr.io/kenn-io/agentsview:latest
+    environment:
+      CLAUDE_PROJECTS_DIR: !reset null
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:?Set AWS_ACCESS_KEY_ID via direnv}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:?Set AWS_SECRET_ACCESS_KEY via direnv}
+      AWS_REGION: ${S3_REGION:?Set S3_REGION via direnv}
+    volumes:
+      - agentsview-s3-data:/data
+      - ./agentsview-s3.toml:/data/config.toml
+
+volumes:
+  agentsview-s3-data:
