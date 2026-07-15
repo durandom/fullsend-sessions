@@ -35,15 +35,14 @@ not paste credentials into chat or store them in this repository.
 
 Then ask:
 
-> Set up fs-sessions with S3 bucket `team-agent-sessions` in `eu-central-1`.
-> Use my existing AWS profile and `alice` as my stable machine identity. Keep
-> sharing default-deny, allow this repository, verify one upload, and install
-> exactly one global SessionEnd hook.
+> Set up fs-sessions for this repository using the S3 configuration and AWS
+> credentials already available in my environment. Keep sharing default-deny,
+> allow this repository, verify one upload, and install exactly one global
+> SessionEnd hook.
 
 The agent validates S3 access, stores only non-secret bucket metadata, creates
-the global repository policy, tests an upload, and installs the hook. The
-machine identity is the person or Fullsend agent that produced a session; it
-does not need to be a physical computer name.
+the global repository policy, resolves a stable machine identity, tests an
+upload, and installs the hook.
 
 To check an existing installation, ask:
 
@@ -134,7 +133,7 @@ them consistently:
 |---|---|
 | `project` | Git repository, such as `rhdh-plugins` |
 | `agent` | Session format/runtime, normally `claude` |
-| `machine` | Producing user or Fullsend agent, such as `alice` or `fs-code` |
+| `machine` | Producing user identity inferred from Git, or a Fullsend agent such as `fs-code` |
 
 AgentsView normalizes dashes to underscores in project labels, so
 `rhdh-plugins` appears as `rhdh_plugins` in the UI.
