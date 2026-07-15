@@ -8,7 +8,7 @@ services:
       AWS_REGION: ${S3_REGION:?Set S3_REGION via direnv}
     volumes:
       - agentsview-s3-data:/data
-      - ./agentsview-s3.toml:/data/config.toml
+      - ./agentsview-s3.toml:/data/config.toml:z
 
 volumes:
   agentsview-s3-data:
