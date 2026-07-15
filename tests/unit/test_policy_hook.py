@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import io
 import json
-import subprocess
 import sys
 from pathlib import Path
 from unittest.mock import patch
@@ -32,29 +31,36 @@ from fs_sessions.policy import (  # noqa: E402
 def global_config(tmp_path, monkeypatch):
     path = tmp_path / "config.json"
     monkeypatch.setenv(config.USER_CONFIG_ENV, str(path))
-    repo = tmp_path / "sessions-repo"
-    repo.mkdir()
-    (repo / "sessions").mkdir()
-    data = config.initialize_sessions_config(repo)
-    return path, repo, data
+    data = config.initialize_s3_sessions_config(
+        bucket="team-sessions", region="eu-test-1", machine="test-user"
+    )
+    return path, data
 
 
-def test_initialize_preserves_rhdh_config(tmp_path, monkeypatch):
+def test_initialize_preserves_unrelated_config_and_removes_legacy_git_storage(
+    tmp_path, monkeypatch
+):
     path = tmp_path / "config.json"
     path.write_text(
-        json.dumps({"repos": {"rhdh": "/code/rhdh"}, "github": {"username": "octo"}})
+        json.dumps(
+            {
+                "repos": {"rhdh": "/code/rhdh", "sessions": "/old/sessions"},
+                "github": {"username": "octo"},
+                "sessions": {"backends": ["git"]},
+            }
+        )
     )
     monkeypatch.setenv(config.USER_CONFIG_ENV, str(path))
-    sessions_repo = tmp_path / "sessions"
-    sessions_repo.mkdir()
-
-    config.initialize_sessions_config(sessions_repo)
+    config.initialize_s3_sessions_config(
+        bucket="team-sessions", region="eu-test-1", machine="test-user"
+    )
 
     saved = json.loads(path.read_text())
     assert saved["repos"]["rhdh"] == "/code/rhdh"
-    assert saved["repos"]["sessions"] == str(sessions_repo)
+    assert "sessions" not in saved["repos"]
     assert saved["github"]["username"] == "octo"
     assert saved["sessions"]["policy"] == {"default": "deny", "rules": []}
+    assert "backends" not in saved["sessions"]
 
 
 def test_initialize_s3_is_default_backend_and_stores_no_credentials(
@@ -71,19 +77,13 @@ def test_initialize_s3_is_default_backend_and_stores_no_credentials(
     )
 
     assert saved["github"] == {"username": "octo"}
-    assert saved["sessions"]["backends"] == ["s3"]
+    assert "backends" not in saved["sessions"]
     assert saved["sessions"]["machine"] == "test-user"
     assert saved["sessions"]["s3"] == {
         "bucket": "team-sessions",
         "region": "eu-central-1",
     }
     assert "access_key" not in json.dumps(saved).lower()
-
-
-@pytest.mark.parametrize("backends", [[], ["unknown"], "s3"])
-def test_invalid_backends_fail_closed(backends):
-    with pytest.raises(config.ConfigError):
-        config.get_backends({"sessions": {"backends": backends}})
 
 
 @pytest.mark.parametrize(
@@ -111,7 +111,7 @@ def _context(
 
 
 def test_whitelist_and_last_match_wins(global_config):
-    _, _, data = global_config
+    _, data = global_config
     rules = data["sessions"]["policy"]["rules"]
     rules.extend(
         [
@@ -130,7 +130,7 @@ def test_whitelist_and_last_match_wins(global_config):
 
 
 def test_blacklist_default_allow(global_config):
-    _, _, data = global_config
+    _, data = global_config
     data["sessions"]["policy"] = {
         "default": "allow",
         "rules": [{"action": "deny", "origin": "github.com/private/*"}],
@@ -143,7 +143,7 @@ def test_blacklist_default_allow(global_config):
 
 
 def test_non_git_is_always_denied(global_config):
-    _, _, data = global_config
+    _, data = global_config
     data["sessions"]["policy"]["default"] = "allow"
     context = RepositoryContext("/tmp", None, None)
     with patch("fs_sessions.policy.discover_repository", return_value=context):
@@ -153,7 +153,7 @@ def test_non_git_is_always_denied(global_config):
 
 
 def test_project_can_opt_out(global_config, tmp_path):
-    _, _, data = global_config
+    _, data = global_config
     root = tmp_path / "project"
     (root / ".rhdh").mkdir(parents=True)
     (root / ".rhdh" / "config.json").write_text('{"sessions":{"enabled":false}}')
@@ -179,7 +179,7 @@ def test_invalid_policies_fail_closed(policy):
 
 
 def test_rule_mutation(global_config):
-    _, _, data = global_config
+    _, data = global_config
     assert add_rule(data, "allow", "origin", "github.com/acme/*") == 1
     assert add_rule(data, "deny", "path", "*/secret") == 2
     assert remove_rule(data, 1) == {"action": "allow", "origin": "github.com/acme/*"}
@@ -271,6 +271,8 @@ def test_export_add_update_and_unchanged(tmp_path):
     assert updated is not None and updated.verb == "update"
     metadata = json.loads(updated.dest.read_text().splitlines()[0])
     assert metadata["message"]["content"].startswith("[Session: project] by user")
+    assert metadata["cwd"] == "/sessions/project"
+    assert "user_project" not in metadata["message"]["content"]
 
 
 def test_export_preserves_complete_session_family(tmp_path):
@@ -317,7 +319,7 @@ def test_export_preserves_complete_session_family(tmp_path):
 def test_hook_run_exports_allowed_repository(
     global_config, tmp_path, monkeypatch, capsys
 ):
-    _, repo, data = global_config
+    _, data = global_config
     data["sessions"]["policy"]["default"] = "allow"
     config.save_user_config(data)
     source_repo = tmp_path / "source"
@@ -338,31 +340,35 @@ def test_hook_run_exports_allowed_repository(
         "fs_sessions.cli.evaluate_policy",
         lambda *_: type("Decision", (), {"allowed": True, "context": context})(),
     )
-    monkeypatch.setattr("fs_sessions.cli._username", lambda: "test-user")
-    monkeypatch.setattr("fs_sessions.cli.commit_files", lambda *args: True)
-    monkeypatch.setattr("fs_sessions.cli.pull_rebase", lambda *args: True)
-    monkeypatch.setattr("fs_sessions.cli.push", lambda *args: True)
+    captured = {}
+
+    def fake_upload(_config, paths, _base, username, project):
+        captured["username"] = username
+        captured["project"] = project
+        captured["paths"] = [path.relative_to(_base).as_posix() for path in paths]
+        return True
+
+    monkeypatch.setattr("fs_sessions.s3.upload_session", fake_upload)
 
     assert main(["hook", "run"]) == 0
-    assert (repo / "sessions" / "test-user_source" / "session-1.jsonl").exists()
-    assert (
-        repo
-        / "sessions"
-        / "test-user_source"
-        / "session-1"
-        / "subagents"
-        / "agent-child.jsonl"
-    ).exists()
+    assert captured == {
+        "username": "test-user",
+        "project": "source",
+        "paths": [
+            "sessions/test-user_source/session-1.jsonl",
+            "sessions/test-user_source/session-1/subagents/agent-child.jsonl",
+        ],
+    }
     assert json.loads(capsys.readouterr().out) == {
         "systemMessage": (
-            "fs-sessions: exported and uploaded 2 session files to Git "
+            "fs-sessions: exported and uploaded 2 session files to S3 "
             "for source/session-1."
         )
     }
 
 
 def test_hook_run_skips_denied_repository(global_config, tmp_path, monkeypatch, capsys):
-    _, repo, _ = global_config
+    _, _ = global_config
     transcript = tmp_path / "source.jsonl"
     transcript.write_text('{"type":"user"}\n')
     event = {
@@ -377,14 +383,13 @@ def test_hook_run_skips_denied_repository(global_config, tmp_path, monkeypatch, 
     )
 
     assert main(["hook", "run"]) == 0
-    assert list((repo / "sessions").glob("*/*.jsonl")) == []
     assert capsys.readouterr().out == ""
 
 
 def test_hook_run_does_not_claim_upload_when_push_fails(
     global_config, tmp_path, monkeypatch, capsys
 ):
-    _, _, data = global_config
+    _, data = global_config
     data["sessions"]["policy"]["default"] = "allow"
     config.save_user_config(data)
     source_repo = tmp_path / "source"
@@ -402,42 +407,7 @@ def test_hook_run_does_not_claim_upload_when_push_fails(
         "fs_sessions.cli.evaluate_policy",
         lambda *_: type("Decision", (), {"allowed": True, "context": context})(),
     )
-    monkeypatch.setattr("fs_sessions.cli._username", lambda: "test-user")
-    monkeypatch.setattr("fs_sessions.cli.commit_files", lambda *args: True)
-    monkeypatch.setattr("fs_sessions.cli.pull_rebase", lambda *args: True)
-    monkeypatch.setattr("fs_sessions.cli.push", lambda *args: False)
+    monkeypatch.setattr("fs_sessions.s3.upload_session", lambda *args: False)
 
     assert main(["hook", "run"]) == 0
     assert capsys.readouterr().out == ""
-
-
-def test_commit_file_does_not_include_other_staged_changes(tmp_path):
-    from fs_sessions.git import commit_file
-
-    subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True)
-    subprocess.run(["git", "config", "user.name", "Test"], cwd=tmp_path, check=True)
-    subprocess.run(
-        ["git", "config", "user.email", "test@example.com"], cwd=tmp_path, check=True
-    )
-    target = tmp_path / "target"
-    other = tmp_path / "other"
-    target.write_text("target")
-    other.write_text("other")
-    subprocess.run(["git", "add", "other"], cwd=tmp_path, check=True)
-
-    assert commit_file(tmp_path, "target", "feat: add target") is True
-
-    committed = subprocess.run(
-        ["git", "show", "--pretty=", "--name-only", "HEAD"],
-        cwd=tmp_path,
-        capture_output=True,
-        text=True,
-        check=True,
-    ).stdout.splitlines()
-    assert committed == ["target"]
-    assert (
-        subprocess.run(
-            ["git", "diff", "--cached", "--quiet", "--", "other"], cwd=tmp_path
-        ).returncode
-        == 1
-    )

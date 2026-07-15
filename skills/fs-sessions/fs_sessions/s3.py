@@ -1,8 +1,12 @@
-"""S3 upload backend for session transcripts."""
+"""S3 storage for session transcripts and Fullsend imports."""
 
 from __future__ import annotations
 
+import json
 import logging
+import mimetypes
+import os
+import tempfile
 from pathlib import Path
 from typing import Any, Dict
 
@@ -10,7 +14,7 @@ log = logging.getLogger(__name__)
 
 
 class S3Error(RuntimeError):
-    """Raised when the configured S3 backend cannot be used."""
+    """Raised when the configured S3 storage cannot be used."""
 
 
 def _get_client(s3_config: Dict[str, Any]):
@@ -116,7 +120,7 @@ def upload_session(
     """
     bucket = s3_config.get("bucket")
     if not bucket:
-        log.warning("S3 backend configured but no bucket specified")
+        log.warning("S3 configured but no bucket specified")
         return False
 
     prefix = s3_config.get("prefix", "")
@@ -143,3 +147,227 @@ def upload_session(
             log.warning("S3 upload failed for %s: %s", key, exc)
             ok = False
     return ok
+
+
+def object_exists(s3_config: Dict[str, Any], key: str) -> bool:
+    """Return whether an object exists without downloading it."""
+    bucket = s3_config.get("bucket")
+    if not bucket:
+        raise S3Error("S3 bucket is not configured")
+    client = _get_client(s3_config)
+    try:
+        client.head_object(Bucket=bucket, Key=key)
+        return True
+    except Exception as exc:
+        response = getattr(exc, "response", {})
+        code = str(response.get("Error", {}).get("Code", ""))
+        if code in {"404", "NoSuchKey", "NotFound"}:
+            return False
+        raise S3Error(f"cannot inspect s3://{bucket}/{key}: {exc}") from exc
+
+
+def read_json_object(s3_config: Dict[str, Any], key: str) -> Dict[str, Any] | None:
+    """Read one JSON object, returning None when it does not exist."""
+    bucket = s3_config.get("bucket")
+    if not bucket:
+        raise S3Error("S3 bucket is not configured")
+    client = _get_client(s3_config)
+    try:
+        body = client.get_object(Bucket=bucket, Key=key)["Body"].read()
+    except Exception as exc:
+        response = getattr(exc, "response", {})
+        code = str(response.get("Error", {}).get("Code", ""))
+        if code in {"404", "NoSuchKey", "NotFound"}:
+            return None
+        raise S3Error(f"cannot read s3://{bucket}/{key}: {exc}") from exc
+    try:
+        parsed = json.loads(body)
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise S3Error(f"invalid JSON in s3://{bucket}/{key}: {exc}") from exc
+    if not isinstance(parsed, dict):
+        raise S3Error(f"expected a JSON object in s3://{bucket}/{key}")
+    return parsed
+
+
+def upload_objects(
+    s3_config: Dict[str, Any],
+    objects: list[tuple[str, bytes]],
+) -> None:
+    """Upload in-memory objects in order, raising on the first failure."""
+    bucket = s3_config.get("bucket")
+    if not bucket:
+        raise S3Error("S3 bucket is not configured")
+    client = _get_client(s3_config)
+    for key, body in objects:
+        content_type = (
+            "application/x-ndjson"
+            if key.endswith(".jsonl")
+            else mimetypes.guess_type(key)[0] or "application/octet-stream"
+        )
+        try:
+            client.put_object(
+                Bucket=bucket,
+                Key=key,
+                Body=body,
+                ContentType=content_type,
+            )
+        except Exception as exc:
+            raise S3Error(f"cannot upload s3://{bucket}/{key}: {exc}") from exc
+
+
+def delete_objects(s3_config: Dict[str, Any], keys: list[str]) -> None:
+    """Delete obsolete generated objects during an explicit forced migration."""
+    if not keys:
+        return
+    bucket = s3_config.get("bucket")
+    if not bucket:
+        raise S3Error("S3 bucket is not configured")
+    client = _get_client(s3_config)
+    for offset in range(0, len(keys), 1000):
+        batch = keys[offset : offset + 1000]
+        try:
+            response = client.delete_objects(
+                Bucket=bucket,
+                Delete={"Objects": [{"Key": key} for key in batch], "Quiet": True},
+            )
+        except Exception as exc:
+            raise S3Error(
+                f"cannot delete generated objects in s3://{bucket}: {exc}"
+            ) from exc
+        errors = response.get("Errors", [])
+        if errors:
+            failed = ", ".join(str(item.get("Key", "")) for item in errors)
+            raise S3Error(f"cannot delete generated objects in s3://{bucket}: {failed}")
+
+
+def repair_export_project_metadata(
+    s3_config: Dict[str, Any], *, apply: bool = False
+) -> Dict[str, Any]:
+    """Repair old exporter-generated headers that included machine in project cwd."""
+    bucket = s3_config.get("bucket")
+    if not bucket:
+        raise S3Error("S3 bucket is not configured")
+    prefix = s3_config.get("prefix", "").strip("/")
+    list_prefix = f"{prefix}/" if prefix else ""
+    client = _get_client(s3_config)
+    token = None
+    scanned = 0
+    changed = 0
+    try:
+        while True:
+            kwargs: Dict[str, Any] = {"Bucket": bucket, "Prefix": list_prefix}
+            if token:
+                kwargs["ContinuationToken"] = token
+            response = client.list_objects_v2(**kwargs)
+            for item in response.get("Contents", []):
+                key = item.get("Key", "")
+                relative = (
+                    key[len(list_prefix) :] if key.startswith(list_prefix) else key
+                )
+                parts = relative.split("/")
+                if (
+                    len(parts) != 5
+                    or parts[1:3] != ["raw", "claude"]
+                    or not parts[4].endswith(".jsonl")
+                    or parts[0].startswith("fs-")
+                ):
+                    continue
+                scanned += 1
+                body = client.get_object(Bucket=bucket, Key=key)["Body"].read()
+                first, separator, rest = body.partition(b"\n")
+                try:
+                    metadata = json.loads(first)
+                except (UnicodeDecodeError, json.JSONDecodeError):
+                    continue
+                project = parts[3]
+                message = metadata.get("message", {})
+                content = (
+                    message.get("content", "") if isinstance(message, dict) else ""
+                )
+                old_cwd = metadata.get("cwd", "")
+                if (
+                    metadata.get("type") != "user"
+                    or not content.startswith("[Session:")
+                    or not old_cwd.startswith("/sessions/")
+                ):
+                    continue
+                cwd = f"/sessions/{project}"
+                if old_cwd == cwd:
+                    continue
+                metadata["cwd"] = cwd
+                message["content"] = content.replace(old_cwd, cwd, 1)
+                repaired = json.dumps(metadata, separators=(",", ":")).encode()
+                if separator:
+                    repaired += separator + rest
+                changed += 1
+                if apply:
+                    client.put_object(
+                        Bucket=bucket,
+                        Key=key,
+                        Body=repaired,
+                        ContentType="application/x-ndjson",
+                    )
+            if not response.get("IsTruncated"):
+                break
+            token = response.get("NextContinuationToken")
+    except Exception as exc:
+        if isinstance(exc, S3Error):
+            raise
+        raise S3Error(
+            f"cannot repair project metadata in s3://{bucket}: {exc}"
+        ) from exc
+    return {"success": True, "apply": apply, "scanned": scanned, "changed": changed}
+
+
+def write_agentsview_config(
+    s3_config: Dict[str, Any], data_dir: Path
+) -> Dict[str, Any]:
+    """Update only AgentsView's Claude S3 roots in its private config."""
+    roots = discover_claude_roots(s3_config)
+    if not roots:
+        raise S3Error("no Claude S3 roots found; upload a session first")
+    data_dir = data_dir.expanduser().resolve()
+    data_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
+    os.chmod(data_dir, 0o700)
+    path = data_dir / "config.toml"
+    original = path.read_text(encoding="utf-8") if path.exists() else ""
+    rendered = (
+        "claude_project_dirs = [\n"
+        + "".join(f"  {json.dumps(root)},\n" for root in roots)
+        + "]"
+    )
+    lines = original.splitlines()
+    start = None
+    end = None
+    depth = 0
+    for index, line in enumerate(lines):
+        if start is None and line.strip().startswith("claude_project_dirs"):
+            start = index
+        if start is not None:
+            depth += line.count("[") - line.count("]")
+            if depth <= 0:
+                end = index + 1
+                break
+    replacement = rendered.splitlines()
+    if start is None:
+        if lines and lines[-1].strip():
+            lines.append("")
+        lines.extend(replacement)
+    else:
+        if end is None:
+            raise S3Error(f"invalid claude_project_dirs assignment in {path}")
+        lines[start:end] = replacement
+    content = "\n".join(lines).rstrip() + "\n"
+    fd, temp_name = tempfile.mkstemp(prefix="config-", suffix=".toml", dir=data_dir)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as stream:
+            stream.write(content)
+        os.chmod(temp_name, 0o600)
+        os.replace(temp_name, path)
+    except Exception:
+        try:
+            os.unlink(temp_name)
+        except OSError:
+            pass
+        raise
+    return {"config": str(path), "roots": roots, "count": len(roots)}

@@ -1,34 +1,33 @@
 # fullsend-sessions
 
-Shared repo for Claude Code session transcripts and fullsend agent run data.
+S3-only tooling for Claude Code transcripts and Fullsend agent run data.
 
 ## Project structure
 
-- `sessions/` — shared session transcripts (`<user>_<project>/<session-id>.jsonl`)
 - `skills/fs-sessions/` — agent skill for session management, installable via `npx skills add`
-  - `scripts/export-session` — Python SessionEnd hook (copies, commits, pushes)
-  - `scripts/fs-sessions` — Python interactive CLI for manual session sharing
-- `scripts/` — fullsend run tooling (fetch from GH Actions, import local runs)
+  - `scripts/fs-sessions` — Python CLI for S3 sharing and Fullsend imports
+- `skills/agentsview/` — read-only AgentsView setup and retrieval skill
 - `justfile` — task runner (`just --list` for available commands)
 
 ## Key commands
 
 ```bash
-just sessions          # start AgentsView for shared sessions
+just up                # start S3-backed AgentsView
 just down              # stop AgentsView
-just fetch             # download fullsend runs from GitHub Actions
-just up                # fetch + start AgentsView
+just fullsend-dry-run  # preview recent GitHub artifact imports
+just fullsend          # upload recent Fullsend sessions to S3
 ```
 
 ## Session flow
 
-SessionEnd hook → `export-session` → copies transcript → commits → pulls → pushes (all best-effort, silent on failure).
+SessionEnd hook → policy check → temporary complete-family export → S3 upload.
 
-Config: `~/.config/fullsend/sessions.env` defines `FULLSEND_SESSIONS_REPO`.
-Hook: installed per-project in `.claude/settings.json`.
+Config: `~/.config/rhdh-skill/config.json` contains non-secret S3 metadata and policy.
+Hook: installed globally in `~/.claude/settings.json`.
 
 ## Conventions
 
-- Session files are append-only — never modify existing transcripts
-- Commit messages: `feat: add session <user>/<project>/<session-id>`
-- No merge commits — always rebase (`git pull --rebase`)
+- S3 is the only transcript backend.
+- Machine means the producing user or Fullsend agent; project means repository.
+- Runtime secrets and AgentsView `config.toml` stay outside Git.
+- Source transcripts are append-only; derived Fullsend transcripts are reproducible from archived artifacts.

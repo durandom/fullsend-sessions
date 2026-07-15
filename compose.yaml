@@ -5,7 +5,11 @@ services:
     ports:
       - "0.0.0.0:${AGENTSVIEW_PORT:-8081}:8080"
     environment:
-      CLAUDE_PROJECTS_DIR: /agents/claude
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:?Set AWS_ACCESS_KEY_ID in the runtime environment}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:?Set AWS_SECRET_ACCESS_KEY in the runtime environment}
+      AWS_SESSION_TOKEN: ${AWS_SESSION_TOKEN:-}
+      AWS_REGION: ${S3_REGION:?Set S3_REGION in the runtime environment}
+      AWS_S3_ENDPOINT: ${AWS_S3_ENDPOINT:-}
     command:
       - "--host"
       - "0.0.0.0"
@@ -13,8 +17,4 @@ services:
       - "--public-url"
       - "http://${AGENTSVIEW_HOST:-localhost}:${AGENTSVIEW_PORT:-8081}"
     volumes:
-      - agentsview-fullsend-data:/data
-      - ${AGENTSVIEW_RUNS:-./runs}:/agents/claude:ro
-
-volumes:
-  agentsview-fullsend-data:
+      - ${AGENTSVIEW_DATA:?Set AGENTSVIEW_DATA to the private AgentsView runtime directory}:/data:z

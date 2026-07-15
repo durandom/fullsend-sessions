@@ -7,7 +7,7 @@ Run:
 "$FS" s3 check
 ```
 
-Status reports the active backends, stable machine name, non-secret S3
+Status reports S3 storage, stable user machine name, non-secret S3
 configuration, enabled state, repository policy, and global hook. `s3 check`
 separately proves the active boto3 identity can list the bucket.
 
@@ -29,5 +29,5 @@ Interpret common denial reasons:
 
 If the hook is installed but no upload occurs, check policy first, then S3
 configuration, boto3 availability, credential presence, `s3:PutObject`, and the
-machine name. Do not switch SDKs or copy credentials into config to work around
+user machine name. Do not switch SDKs or copy credentials into config to work around
 an IAM denial.
