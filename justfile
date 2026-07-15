@@ -41,6 +41,14 @@ sessions: ensure-podman
     fi
     just start-viewer "$sessions_dir"
 
+# Browse shared team sessions directly from S3
+sessions-s3: ensure-podman
+    #!/usr/bin/env bash
+    set -euo pipefail
+    AGENTSVIEW_HOST=$(hostname).local \
+      {{ compose }} -f compose.yaml -f compose.s3.yaml up -d --pull always --force-recreate
+    echo "AgentsView: http://$(hostname).local:${AGENTSVIEW_PORT:-8081}"
+
 # Start AgentsView without fetching (use after manual imports)
 viewer: ensure-podman
     @just start-viewer
@@ -48,3 +56,8 @@ viewer: ensure-podman
 # Stop AgentsView container
 down:
     {{ compose }} -f compose.yaml down -v
+
+# Stop the S3-backed viewer and remove only its derived index
+down-s3:
+    {{ compose }} -f compose.yaml -f compose.s3.yaml down
+    podman volume rm fullsend-sessions_agentsview-s3-data 2>/dev/null || true
