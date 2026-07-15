@@ -33,7 +33,10 @@ machine = fs-<artifact agent>, for example fs-code or fs-review
 The importer writes subagents before the parent session, archives the source
 ZIP, workflow log, provenance, and available revision-pinned context, then
 writes a manifest last. An existing manifest skips the artifact. Use `--force`
-only when the user explicitly wants conversion with the current schema.
+only when the user explicitly wants conversion with the current schema. A
+forced schema migration uploads replacement derivatives first, removes obsolete
+generated session destinations recorded by the prior manifest, and then writes
+the new manifest. Archived source artifacts are never deleted.
 
 For the old `rhdh-fullsend/agentsview/artifacts` cache, preview and then import:
 

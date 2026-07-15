@@ -166,6 +166,29 @@ def object_exists(s3_config: Dict[str, Any], key: str) -> bool:
         raise S3Error(f"cannot inspect s3://{bucket}/{key}: {exc}") from exc
 
 
+def read_json_object(s3_config: Dict[str, Any], key: str) -> Dict[str, Any] | None:
+    """Read one JSON object, returning None when it does not exist."""
+    bucket = s3_config.get("bucket")
+    if not bucket:
+        raise S3Error("S3 bucket is not configured")
+    client = _get_client(s3_config)
+    try:
+        body = client.get_object(Bucket=bucket, Key=key)["Body"].read()
+    except Exception as exc:
+        response = getattr(exc, "response", {})
+        code = str(response.get("Error", {}).get("Code", ""))
+        if code in {"404", "NoSuchKey", "NotFound"}:
+            return None
+        raise S3Error(f"cannot read s3://{bucket}/{key}: {exc}") from exc
+    try:
+        parsed = json.loads(body)
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise S3Error(f"invalid JSON in s3://{bucket}/{key}: {exc}") from exc
+    if not isinstance(parsed, dict):
+        raise S3Error(f"expected a JSON object in s3://{bucket}/{key}")
+    return parsed
+
+
 def upload_objects(
     s3_config: Dict[str, Any],
     objects: list[tuple[str, bytes]],
@@ -190,6 +213,31 @@ def upload_objects(
             )
         except Exception as exc:
             raise S3Error(f"cannot upload s3://{bucket}/{key}: {exc}") from exc
+
+
+def delete_objects(s3_config: Dict[str, Any], keys: list[str]) -> None:
+    """Delete obsolete generated objects during an explicit forced migration."""
+    if not keys:
+        return
+    bucket = s3_config.get("bucket")
+    if not bucket:
+        raise S3Error("S3 bucket is not configured")
+    client = _get_client(s3_config)
+    for offset in range(0, len(keys), 1000):
+        batch = keys[offset : offset + 1000]
+        try:
+            response = client.delete_objects(
+                Bucket=bucket,
+                Delete={"Objects": [{"Key": key} for key in batch], "Quiet": True},
+            )
+        except Exception as exc:
+            raise S3Error(
+                f"cannot delete generated objects in s3://{bucket}: {exc}"
+            ) from exc
+        errors = response.get("Errors", [])
+        if errors:
+            failed = ", ".join(str(item.get("Key", "")) for item in errors)
+            raise S3Error(f"cannot delete generated objects in s3://{bucket}: {failed}")
 
 
 def repair_export_project_metadata(
