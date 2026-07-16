@@ -149,6 +149,32 @@ def upload_session(
     return ok
 
 
+def list_keys(s3_config: Dict[str, Any], prefix: str) -> set[str]:
+    """Return all object keys under *prefix* using paginated LIST."""
+    bucket = s3_config.get("bucket")
+    if not bucket:
+        raise S3Error("S3 bucket is not configured")
+    client = _get_client(s3_config)
+    keys: set[str] = set()
+    token = None
+    try:
+        while True:
+            kwargs: Dict[str, Any] = {"Bucket": bucket, "Prefix": prefix}
+            if token:
+                kwargs["ContinuationToken"] = token
+            response = client.list_objects_v2(**kwargs)
+            for item in response.get("Contents", []):
+                keys.add(item["Key"])
+            if not response.get("IsTruncated"):
+                break
+            token = response.get("NextContinuationToken")
+    except Exception as exc:
+        if isinstance(exc, S3Error):
+            raise
+        raise S3Error(f"cannot list s3://{bucket}/{prefix}: {exc}") from exc
+    return keys
+
+
 def object_exists(s3_config: Dict[str, Any], key: str) -> bool:
     """Return whether an object exists without downloading it."""
     bucket = s3_config.get("bucket")

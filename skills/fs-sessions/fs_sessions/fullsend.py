@@ -6,8 +6,11 @@ import base64
 import json
 import re
 import subprocess
+import sys
 import tempfile
+import threading
 import zipfile
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -15,7 +18,7 @@ from typing import Any, Dict, Iterable
 
 from fs_sessions.s3 import (
     delete_objects,
-    object_exists,
+    list_keys,
     read_json_object,
     upload_objects,
 )
@@ -665,6 +668,13 @@ def _write_converted_artifact(
     upload_objects(s3_config, [(key, manifest_body)])
 
 
+def _manifest_inventory(
+    s3_config: Dict[str, Any], prefix: str
+) -> set[str]:
+    manifest_prefix = _prefixed(prefix, "imports/github/") if prefix else "imports/github/"
+    return {k for k in list_keys(s3_config, manifest_prefix) if k.endswith("/manifest.json")}
+
+
 def import_artifacts(
     s3_config: Dict[str, Any],
     artifacts: Iterable[Artifact],
@@ -672,31 +682,81 @@ def import_artifacts(
     *,
     dry_run: bool = False,
     force: bool = False,
+    workers: int = 8,
 ) -> ImportSummary:
-    summary = ImportSummary()
+    artifact_list = list(artifacts)
+    total = len(artifact_list)
+    summary = ImportSummary(discovered=total)
     prefix = str(s3_config.get("prefix", ""))
-    for artifact in artifacts:
-        summary.discovered += 1
+
+    if not dry_run and not force:
+        existing = _manifest_inventory(s3_config, prefix)
+    else:
+        existing = set()
+
+    work = []
+    for artifact in artifact_list:
         key = manifest_key(prefix, artifact)
+        if not force and key in existing:
+            summary.skipped += 1
+            continue
+        work.append((artifact, key))
+
+    if not work:
+        _progress(total, total, "nothing to import", total - len(work))
+        return summary
+
+    lock = threading.Lock()
+    counter = [total - len(work)]
+
+    def process(artifact: Artifact, key: str) -> None:
         try:
             previous_manifest = None
-            if not dry_run and not force and object_exists(s3_config, key):
-                summary.skipped += 1
-                continue
             if not dry_run and force:
                 previous_manifest = read_json_object(s3_config, key)
             converted = convert_artifact(fetch_artifact_input(client, artifact), prefix)
             if not dry_run:
                 _write_converted_artifact(s3_config, converted, key, previous_manifest)
-            summary.imported += 1
-            summary.sessions += bool(converted.session_id)
-            summary.subagents += converted.manifest["subagent_count"]
+            with lock:
+                summary.imported += 1
+                summary.sessions += bool(converted.session_id)
+                summary.subagents += converted.manifest["subagent_count"]
+                counter[0] += 1
+                _progress(counter[0], total, "imported", artifact, summary.skipped)
         except Exception as exc:
-            summary.failed += 1
-            summary.errors.append(
-                f"{artifact.repo} run {artifact.run_id} {artifact.name}: {exc}"
-            )
+            with lock:
+                summary.failed += 1
+                summary.errors.append(
+                    f"{artifact.repo} run {artifact.run_id} {artifact.name}: {exc}"
+                )
+                counter[0] += 1
+                _progress(counter[0], total, "FAILED", artifact, summary.skipped)
+
+    with ThreadPoolExecutor(max_workers=min(workers, len(work))) as pool:
+        futures = [pool.submit(process, art, key) for art, key in work]
+        for future in as_completed(futures):
+            future.result()
+
     return summary
+
+
+def _progress(
+    done: int,
+    total: int,
+    action: str,
+    artifact_or_skipped: Artifact | int | None = None,
+    skipped: int = 0,
+) -> None:
+    if isinstance(artifact_or_skipped, int):
+        skipped = artifact_or_skipped
+        detail = action
+    elif artifact_or_skipped is not None:
+        repo = artifact_or_skipped.repo.rsplit("/", 1)[-1]
+        detail = f"{action} {repo} {artifact_or_skipped.name} (run {artifact_or_skipped.run_id})"
+    else:
+        detail = action
+    skip_note = f", {skipped} skipped" if skipped else ""
+    print(f"[{done}/{total}{skip_note}] {detail}", file=sys.stderr, flush=True)
 
 
 def cached_artifact_inputs(cache_dir: Path) -> list[ArtifactInput]:
@@ -754,29 +814,59 @@ def import_cached_artifacts(
     *,
     dry_run: bool = False,
     force: bool = False,
+    workers: int = 8,
 ) -> ImportSummary:
-    summary = ImportSummary()
+    input_list = list(inputs)
+    total = len(input_list)
+    summary = ImportSummary(discovered=total)
     prefix = str(s3_config.get("prefix", ""))
-    for data in inputs:
-        summary.discovered += 1
+
+    if not dry_run and not force:
+        existing = _manifest_inventory(s3_config, prefix)
+    else:
+        existing = set()
+
+    work = []
+    for data in input_list:
         key = manifest_key(prefix, data.artifact)
+        if not force and key in existing:
+            summary.skipped += 1
+            continue
+        work.append((data, key))
+
+    if not work:
+        _progress(total, total, "nothing to import", total - len(work))
+        return summary
+
+    lock = threading.Lock()
+    counter = [total - len(work)]
+
+    def process(data: ArtifactInput, key: str) -> None:
         try:
             previous_manifest = None
-            if not dry_run and not force and object_exists(s3_config, key):
-                summary.skipped += 1
-                continue
             if not dry_run and force:
                 previous_manifest = read_json_object(s3_config, key)
             converted = convert_artifact(data, prefix)
             if not dry_run:
                 _write_converted_artifact(s3_config, converted, key, previous_manifest)
-            summary.imported += 1
-            summary.sessions += bool(converted.session_id)
-            summary.subagents += converted.manifest["subagent_count"]
+            with lock:
+                summary.imported += 1
+                summary.sessions += bool(converted.session_id)
+                summary.subagents += converted.manifest["subagent_count"]
+                counter[0] += 1
+                _progress(counter[0], total, "imported", data.artifact, summary.skipped)
         except Exception as exc:
-            summary.failed += 1
-            summary.errors.append(
-                f"{data.artifact.repo} run {data.artifact.run_id} "
-                f"{data.artifact.name}: {exc}"
-            )
+            with lock:
+                summary.failed += 1
+                summary.errors.append(
+                    f"{data.artifact.repo} run {data.artifact.run_id} "
+                    f"{data.artifact.name}: {exc}"
+                )
+                counter[0] += 1
+                _progress(counter[0], total, "FAILED", data.artifact, summary.skipped)
+
+    with ThreadPoolExecutor(max_workers=min(workers, len(work))) as pool:
+        futures = [pool.submit(process, d, key) for d, key in work]
+        for future in as_completed(futures):
+            future.result()
     return summary
