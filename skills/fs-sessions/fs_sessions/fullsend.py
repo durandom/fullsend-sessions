@@ -675,6 +675,50 @@ def _manifest_inventory(
     return {k for k in list_keys(s3_config, manifest_prefix) if k.endswith("/manifest.json")}
 
 
+SYNC_STATE_KEY = "imports/github/_sync-state.json"
+
+
+def read_sync_state(s3_config: Dict[str, Any]) -> Dict[str, Any] | None:
+    prefix = str(s3_config.get("prefix", ""))
+    key = _prefixed(prefix, SYNC_STATE_KEY) if prefix else SYNC_STATE_KEY
+    return read_json_object(s3_config, key)
+
+
+def write_sync_state(
+    s3_config: Dict[str, Any],
+    artifacts: list[Artifact],
+    summary: ImportSummary,
+) -> None:
+    newest = max(
+        (a.created for a in artifacts if a.created), default=""
+    )
+    if not newest:
+        return
+    prefix = str(s3_config.get("prefix", ""))
+    key = _prefixed(prefix, SYNC_STATE_KEY) if prefix else SYNC_STATE_KEY
+    state = {
+        "synced_at": datetime.now(timezone.utc).isoformat(),
+        "artifact_cutoff": newest,
+        "discovered": summary.discovered,
+        "imported": summary.imported,
+        "skipped": summary.skipped,
+        "failed": summary.failed,
+    }
+    body = json.dumps(state, indent=2, sort_keys=True).encode() + b"\n"
+    upload_objects(s3_config, [(key, body)])
+
+
+def sync_state_cutoff(s3_config: Dict[str, Any]) -> datetime | None:
+    state = read_sync_state(s3_config)
+    if not state or not state.get("artifact_cutoff"):
+        return None
+    try:
+        cutoff = _parse_time(state["artifact_cutoff"])
+    except (ValueError, TypeError):
+        return None
+    return cutoff - timedelta(hours=1)
+
+
 def import_artifacts(
     s3_config: Dict[str, Any],
     artifacts: Iterable[Artifact],

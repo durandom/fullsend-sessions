@@ -418,12 +418,15 @@ def cmd_fullsend_import(args: argparse.Namespace) -> int:
         import_artifacts,
         import_cached_artifacts,
         since_days,
+        sync_state_cutoff,
+        write_sync_state,
     )
 
     config = load_user_config(missing_ok=False)
     s3_config = get_s3_config(config)
     if not s3_config:
         raise ConfigError("S3 is not configured; run 'config init' first")
+    use_marker = not args.no_marker
     if args.cache_dir:
         cache_dir = Path(args.cache_dir).expanduser().resolve()
         if not cache_dir.is_dir():
@@ -435,9 +438,26 @@ def cmd_fullsend_import(args: argparse.Namespace) -> int:
             dry_run=args.dry_run,
             force=args.force,
         )
+        artifacts = []
     else:
         client = GitHubClient()
-        cutoff = None if args.all or args.run_id else since_days(args.since)
+        since_explicit = args.since is not None
+        if args.all or args.run_id:
+            cutoff = None
+        elif since_explicit:
+            cutoff = since_days(args.since)
+        elif use_marker:
+            cutoff = sync_state_cutoff(s3_config)
+            if cutoff:
+                print(
+                    f"sync-state: resuming from {cutoff.isoformat()}",
+                    file=sys.stderr,
+                    flush=True,
+                )
+            else:
+                cutoff = since_days(7)
+        else:
+            cutoff = since_days(7)
         artifacts = []
         for repo in args.repo or DEFAULT_REPOS:
             artifacts.extend(
@@ -455,6 +475,8 @@ def cmd_fullsend_import(args: argparse.Namespace) -> int:
             dry_run=args.dry_run,
             force=args.force,
         )
+    if use_marker and not args.dry_run and summary.failed == 0 and artifacts:
+        write_sync_state(s3_config, artifacts, summary)
     payload = summary.to_dict()
     payload["dry_run"] = args.dry_run
     _emit(
@@ -604,7 +626,10 @@ def create_parser() -> argparse.ArgumentParser:
     )
     fullsend_import.add_argument("--run-id", help="Import one workflow run")
     fullsend_import.add_argument(
-        "--since", type=_since_days, default=7, help="Recent days to scan (default: 7d)"
+        "--since",
+        type=_since_days,
+        default=None,
+        help="Recent days to scan (default: auto from sync-state, fallback 7d)",
     )
     fullsend_import.add_argument(
         "--all", action="store_true", help="Scan all unexpired artifacts"
@@ -617,6 +642,11 @@ def create_parser() -> argparse.ArgumentParser:
     )
     fullsend_import.add_argument(
         "--force", action="store_true", help="Reconvert artifacts with manifests"
+    )
+    fullsend_import.add_argument(
+        "--no-marker",
+        action="store_true",
+        help="Skip reading/writing the S3 sync-state marker",
     )
     fullsend_import.set_defaults(func=cmd_fullsend_import)
     return parser
