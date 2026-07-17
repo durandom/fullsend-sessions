@@ -479,9 +479,10 @@ def cmd_fullsend_import(args: argparse.Namespace) -> int:
         write_sync_state(s3_config, artifacts, summary)
     payload = summary.to_dict()
     payload["dry_run"] = args.dry_run
+    noop = summary.imported == 0 and summary.failed == 0
     _emit(
         payload,
-        (
+        None if noop else (
             f"Fullsend: {summary.imported} imported, {summary.skipped} skipped, "
             f"{summary.failed} failed; {summary.sessions} sessions and "
             f"{summary.subagents} subagents"

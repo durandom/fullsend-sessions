@@ -747,7 +747,6 @@ def import_artifacts(
         work.append((artifact, key))
 
     if not work:
-        _progress(total, total, "nothing to import", total - len(work))
         return summary
 
     lock = threading.Lock()
@@ -879,7 +878,6 @@ def import_cached_artifacts(
         work.append((data, key))
 
     if not work:
-        _progress(total, total, "nothing to import", total - len(work))
         return summary
 
     lock = threading.Lock()
