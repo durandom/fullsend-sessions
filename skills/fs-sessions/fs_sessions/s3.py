@@ -6,6 +6,7 @@ import json
 import logging
 import mimetypes
 import os
+import secrets
 import tempfile
 from pathlib import Path
 from typing import Any, Dict
@@ -383,6 +384,11 @@ def write_agentsview_config(
         if end is None:
             raise S3Error(f"invalid claude_project_dirs assignment in {path}")
         lines[start:end] = replacement
+
+    for key in ("auth_token", "cursor_secret"):
+        if not any(line.strip().startswith(f"{key}") for line in lines):
+            lines.insert(0, f'{key} = "{secrets.token_urlsafe(32)}"')
+
     content = "\n".join(lines).rstrip() + "\n"
     fd, temp_name = tempfile.mkstemp(prefix="config-", suffix=".toml", dir=data_dir)
     try:
