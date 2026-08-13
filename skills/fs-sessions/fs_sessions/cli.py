@@ -437,6 +437,7 @@ def cmd_fullsend_import(args: argparse.Namespace) -> int:
             inputs,
             dry_run=args.dry_run,
             force=args.force,
+            upgrade=args.upgrade,
         )
         artifacts = []
     else:
@@ -474,6 +475,7 @@ def cmd_fullsend_import(args: argparse.Namespace) -> int:
             client,
             dry_run=args.dry_run,
             force=args.force,
+            upgrade=args.upgrade,
         )
     if use_marker and not args.dry_run and summary.failed == 0 and artifacts:
         write_sync_state(s3_config, artifacts, summary)
@@ -642,7 +644,12 @@ def create_parser() -> argparse.ArgumentParser:
         "--dry-run", action="store_true", help="Fetch and convert without uploading"
     )
     fullsend_import.add_argument(
-        "--force", action="store_true", help="Reconvert artifacts with manifests"
+        "--force", action="store_true", help="Reconvert all artifacts"
+    )
+    fullsend_import.add_argument(
+        "--upgrade",
+        action="store_true",
+        help="Reconvert only artifacts with outdated converter version"
     )
     fullsend_import.add_argument(
         "--no-marker",
