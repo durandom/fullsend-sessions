@@ -353,32 +353,63 @@ def _transcript_session_id(source: bytes, fallback: str) -> str:
     return fallback
 
 
+def _entity_from_event(provenance: Dict[str, Any] | None) -> str:
+    event = (provenance or {}).get("event", "")
+    return "pr" if "pull_request" in event else "issue"
+
+
 def _work_item(
-    summary: Dict[str, Any], agent: str, workflow_log: bytes
+    summary: Dict[str, Any],
+    workflow_log: bytes,
+    result: Dict[str, Any] | None = None,
+    provenance: Dict[str, Any] | None = None,
 ) -> tuple[str, str]:
+    entity = ""
+    number = ""
+
     url = str(summary.get("fullsend.work_item_id", ""))
     match = re.search(r"(\d+)$", url)
-    number = match.group(1) if match else "unknown"
-    entity = "pr" if "/pull/" in url or agent in {"review", "fix"} else "issue"
-    if number == "unknown":
-        for line in workflow_log.decode(errors="replace").splitlines():
-            match = re.search(r'"(pull_request|issue)".*?"number"\s*:\s*(\d+)', line)
-            if match:
-                entity = "pr" if match.group(1) == "pull_request" else "issue"
-                number = match.group(2)
+    if match:
+        number = match.group(1)
+        entity = "pr" if "/pull/" in url else "issue"
+
+    if not number and result:
+        for key, etype in (("pr_number", "pr"), ("issue_number", "issue")):
+            val = result.get(key)
+            if val is not None:
+                number = str(val)
+                entity = etype
                 break
-    return entity, number
+
+    if not number:
+        log_text = workflow_log.decode(errors="replace")
+        log_patterns: list[tuple[str, str]] = [
+            (r"PR_NUMBER:\s*(\d+)", "pr"),
+            (r"ISSUE_NUMBER:\s*(\d+)", "issue"),
+            (r"status-number:\s*(\d+)", ""),
+        ]
+        for pattern, etype in log_patterns:
+            m = re.search(pattern, log_text)
+            if m and m.group(1) != "0":
+                number = m.group(1)
+                entity = etype
+                break
+
+    entity = entity or _entity_from_event(provenance)
+    return entity, number or "unknown"
 
 
-def _title_extra(summary: Dict[str, Any]) -> str:
-    metrics = summary.get("metrics", {})
+def _title_extra(
+    summary: Dict[str, Any], standalone_metrics: Dict[str, Any] | None = None
+) -> str:
+    m = summary.get("metrics") or standalone_metrics or {}
     parts = []
-    if metrics.get("total_cost_usd") is not None:
-        parts.append(f"${metrics['total_cost_usd']}")
+    if m.get("total_cost_usd") is not None:
+        parts.append(f"${m['total_cost_usd']}")
     if summary.get("duration_ms") is not None:
         parts.append(f"{int(summary['duration_ms'] / 1000)}s")
-    if metrics.get("num_turns") is not None:
-        parts.append(f"{metrics['num_turns']} turns")
+    if m.get("num_turns") is not None:
+        parts.append(f"{m['num_turns']} turns")
     return " · " + " · ".join(parts) if parts else ""
 
 
@@ -567,9 +598,12 @@ def convert_artifact(data: ArtifactInput, prefix: str = "") -> ConvertedArtifact
     session_id = _transcript_session_id(entries[main_name], Path(main_name).stem)
     summary = _load_json(_find_entry(entries, "/run-summary.json"))
     result = _load_json(_find_entry(entries, "/agent-result.json"))
+    standalone_metrics = _load_json(_find_entry(entries, "/metrics.json"))
     runtime = _runtime_metadata(entries)
-    entity, number = _work_item(summary, data.artifact.agent_name, data.workflow_log)
-    extra = _title_extra(summary)
+    entity, number = _work_item(
+        summary, data.workflow_log, result, data.provenance
+    )
+    extra = _title_extra(summary, standalone_metrics)
     conclusion = data.provenance.get("conclusion", "")
     title = (
         f"{data.artifact.agent_name} {entity} #{number} - run "
@@ -577,11 +611,18 @@ def convert_artifact(data: ArtifactInput, prefix: str = "") -> ConvertedArtifact
     )
     created = data.artifact.created
     cwd = f"/fullsend/{project}"
+    work_item_url = ""
+    if number != "unknown":
+        wi_repo = result.get("repo") or data.artifact.repo
+        path = "pull" if entity == "pr" else "issues"
+        work_item_url = f"https://github.com/{wi_repo}/{path}/{number}"
+    run_url = data.provenance.get("run_url", "")
+    urls = "\n".join(u for u in [work_item_url, run_url] if u)
     meta = {
         "type": "user",
         "timestamp": created,
         "message": {
-            "content": f"{title}\n{data.provenance.get('run_url', '')}".rstrip()
+            "content": f"{title}\n{urls}".rstrip()
         },
         "cwd": cwd,
     }
