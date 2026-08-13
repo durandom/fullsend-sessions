@@ -106,6 +106,7 @@ def artifact_input() -> ArtifactInput:
             "run_url": "https://github.example/run/9876",
             "created": artifact.created,
             "head_sha": "deadbeef",
+            "event": "issues",
             "job_name": "Code",
             "context": {"agent": ".fullsend/agents/code.md"},
         },
@@ -132,6 +133,7 @@ def test_convert_maps_repo_to_project_and_fs_agent_to_machine():
     assert '"cwd":"/fullsend/rhdh-agentic"' in parent
     assert "/target-repo" not in parent
     assert "code issue #89 - run 9876 [success · $0.44 · 215s · 19 turns]" in parent
+    assert "https://github.com/redhat-developer/rhdh-agentic/issues/89" in parent
     assert "📋 Fullsend Execution Context" in parent
     assert "You are the code agent." in parent
     assert "Structured final result" in parent
@@ -143,10 +145,194 @@ def test_convert_maps_repo_to_project_and_fs_agent_to_machine():
     assert converted.manifest["schema_version"] == 3
 
 
+def _review_artifact_zip() -> bytes:
+    """New-format artifact: no run-summary.json, has metrics.json + agent-result with pr_number."""
+    stream = io.BytesIO()
+    root = "agent-review-3785-123/iteration-2"
+    with zipfile.ZipFile(stream, "w") as archive:
+        archive.writestr(
+            f"{root}/transcripts/review-session-2.jsonl",
+            "\n".join(
+                [
+                    json.dumps(
+                        {
+                            "type": "user",
+                            "message": {"content": "Review the PR"},
+                            "cwd": "/target-repo",
+                            "sessionId": "session-2",
+                        }
+                    ),
+                    json.dumps(
+                        {"type": "assistant", "message": {"content": "LGTM"}},
+                    ),
+                ]
+            )
+            + "\n",
+        )
+        archive.writestr(
+            f"{root}/output/agent-result.json",
+            json.dumps(
+                {
+                    "action": "comment",
+                    "pr_number": 4235,
+                    "repo": "redhat-developer/rhdh-plugins",
+                    "body": "Review comment",
+                }
+            ),
+        )
+        archive.writestr(
+            "agent-review-3785-123/metrics.json",
+            json.dumps(
+                {"total_cost_usd": 1.23, "num_turns": 5, "model": "claude-opus-4-6"}
+            ),
+        )
+        archive.writestr(
+            f"{root}/output.jsonl",
+            json.dumps({"type": "system", "subtype": "init", "model": "claude-opus-4-6"})
+            + "\n",
+        )
+    return stream.getvalue()
+
+
+def _review_artifact_input() -> ArtifactInput:
+    artifact = Artifact(
+        id="5678",
+        name="fullsend-review",
+        run_id="31578507133",
+        created="2026-08-12T09:13:09Z",
+        repo="redhat-developer/rhdh-plugins",
+    )
+    return ArtifactInput(
+        artifact=artifact,
+        zip_bytes=_review_artifact_zip(),
+        provenance={
+            "run_id": artifact.run_id,
+            "repo": artifact.repo,
+            "artifact_id": artifact.id,
+            "artifact_name": artifact.name,
+            "agent_name": "review",
+            "conclusion": "success",
+            "run_url": "https://github.com/redhat-developer/rhdh-plugins/actions/runs/31578507133",
+            "created": artifact.created,
+            "head_sha": "2108e6e2",
+            "job_name": "Review",
+            "event": "pull_request_target",
+            "context": {},
+        },
+        workflow_log=b"",
+    )
+
+
+def _log_artifact_zip() -> bytes:
+    """Minimal artifact with no run-summary.json and no agent-result pr_number."""
+    stream = io.BytesIO()
+    root = "agent-code-42-999/iteration-1"
+    with zipfile.ZipFile(stream, "w") as archive:
+        archive.writestr(
+            f"{root}/transcripts/code-session-3.jsonl",
+            json.dumps(
+                {
+                    "type": "user",
+                    "message": {"content": "Fix it"},
+                    "cwd": "/repo",
+                    "sessionId": "session-3",
+                }
+            )
+            + "\n",
+        )
+        archive.writestr(
+            f"{root}/output.jsonl",
+            json.dumps({"type": "system", "subtype": "init", "model": "test"}) + "\n",
+        )
+    return stream.getvalue()
+
+
+def test_convert_review_extracts_pr_number_from_result():
+    converted = convert_artifact(_review_artifact_input(), prefix="team")
+
+    parent = converted.objects[0][1].decode()
+    assert "review pr #4235 - run 31578507133 [success" in parent
+    assert "https://github.com/redhat-developer/rhdh-plugins/pull/4235" in parent
+    assert "$1.23" in parent
+    assert "5 turns" in parent
+
+
+def test_convert_code_extracts_issue_number_from_log():
+    artifact = Artifact(
+        id="7001", name="fullsend-code", run_id="111",
+        created="2026-08-13T06:00:00Z", repo="redhat-developer/rhdh-plugins",
+    )
+    data = ArtifactInput(
+        artifact=artifact,
+        zip_bytes=_log_artifact_zip(),
+        provenance={
+            "run_id": "111", "repo": artifact.repo,
+            "artifact_id": artifact.id, "artifact_name": artifact.name,
+            "agent_name": "code", "conclusion": "success",
+            "run_url": "https://github.com/redhat-developer/rhdh-plugins/actions/runs/111",
+            "created": artifact.created, "head_sha": "abc",
+            "event": "issues", "context": {},
+        },
+        workflow_log=b"  ISSUE_NUMBER: 4282\n  status-number: 4282\n",
+    )
+    converted = convert_artifact(data)
+    parent = converted.objects[0][1].decode()
+    assert "code issue #4282 - run 111 [success]" in parent
+    assert "https://github.com/redhat-developer/rhdh-plugins/issues/4282" in parent
+
+
+def test_convert_triage_uses_status_number_and_event():
+    artifact = Artifact(
+        id="7002", name="fullsend-triage", run_id="222",
+        created="2026-08-13T08:00:00Z", repo="redhat-developer/rhdh-plugins",
+    )
+    data = ArtifactInput(
+        artifact=artifact,
+        zip_bytes=_log_artifact_zip(),
+        provenance={
+            "run_id": "222", "repo": artifact.repo,
+            "artifact_id": artifact.id, "artifact_name": artifact.name,
+            "agent_name": "triage", "conclusion": "success",
+            "run_url": "https://github.com/redhat-developer/rhdh-plugins/actions/runs/222",
+            "created": artifact.created, "head_sha": "def",
+            "event": "issues", "context": {},
+        },
+        workflow_log=b"  status-number: 4286\n",
+    )
+    converted = convert_artifact(data)
+    parent = converted.objects[0][1].decode()
+    assert "triage issue #4286 - run 222 [success]" in parent
+    assert "https://github.com/redhat-developer/rhdh-plugins/issues/4286" in parent
+
+
+def test_convert_retro_uses_status_number_with_pr_event():
+    artifact = Artifact(
+        id="7003", name="fullsend-retro", run_id="333",
+        created="2026-08-13T06:30:00Z", repo="redhat-developer/rhdh-plugins",
+    )
+    data = ArtifactInput(
+        artifact=artifact,
+        zip_bytes=_log_artifact_zip(),
+        provenance={
+            "run_id": "333", "repo": artifact.repo,
+            "artifact_id": artifact.id, "artifact_name": artifact.name,
+            "agent_name": "retro", "conclusion": "success",
+            "run_url": "https://github.com/redhat-developer/rhdh-plugins/actions/runs/333",
+            "created": artifact.created, "head_sha": "fed",
+            "event": "pull_request_target", "context": {},
+        },
+        workflow_log=b"  status-number: 4250\n",
+    )
+    converted = convert_artifact(data)
+    parent = converted.objects[0][1].decode()
+    assert "retro pr #4250 - run 333 [success]" in parent
+    assert "https://github.com/redhat-developer/rhdh-plugins/pull/4250" in parent
+
+
 def test_import_is_idempotent_and_writes_manifest_last(monkeypatch):
     data = artifact_input()
     uploads = []
-    monkeypatch.setattr("fs_sessions.fullsend.object_exists", lambda *_: False)
+    monkeypatch.setattr("fs_sessions.fullsend.list_keys", lambda *_: [])
     monkeypatch.setattr(
         "fs_sessions.fullsend.upload_objects",
         lambda _config, objects: uploads.extend(objects),
@@ -162,8 +348,9 @@ def test_import_is_idempotent_and_writes_manifest_last(monkeypatch):
     manifest = json.loads(uploads[-1][1])
     assert manifest["destinations"][-1].endswith("session-1.jsonl")
 
-    monkeypatch.setattr("fs_sessions.fullsend.object_exists", lambda *_: True)
-    second = import_cached_artifacts({"bucket": "sessions"}, [data])
+    mkey = manifest_key("team", data.artifact)
+    monkeypatch.setattr("fs_sessions.fullsend.list_keys", lambda *_: [mkey])
+    second = import_cached_artifacts({"bucket": "sessions", "prefix": "team"}, [data])
     assert second.skipped == 1
     assert second.imported == 0
 
