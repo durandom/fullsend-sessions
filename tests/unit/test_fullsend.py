@@ -142,7 +142,7 @@ def test_convert_maps_repo_to_project_and_fs_agent_to_machine():
     assert converted.manifest["machine"] == "fs-code"
     assert converted.manifest["project"] == "rhdh-agentic"
     assert converted.manifest["subagent_count"] == 1
-    assert converted.manifest["schema_version"] == 3
+    assert converted.manifest["schema_version"] == 4
 
 
 def _review_artifact_zip() -> bytes:
@@ -383,6 +383,39 @@ def test_force_migration_removes_obsolete_generated_destinations(monkeypatch):
     assert summary.failed == 0
     assert deleted == sorted([old_child, old_parent])
     assert uploads[-1][0][0] == manifest_key("team", data.artifact)
+
+
+def test_upgrade_reimports_outdated_manifests_only(monkeypatch):
+    data = artifact_input()
+    mkey = manifest_key("team", data.artifact)
+    uploads = []
+    monkeypatch.setattr("fs_sessions.fullsend.list_keys", lambda *_: [mkey])
+    monkeypatch.setattr(
+        "fs_sessions.fullsend.read_json_object",
+        lambda _cfg, key: {"schema_version": 3} if key == mkey else None,
+    )
+    monkeypatch.setattr(
+        "fs_sessions.fullsend.upload_objects",
+        lambda _config, objects: uploads.extend(objects),
+    )
+    monkeypatch.setattr("fs_sessions.fullsend.delete_objects", lambda *_: None)
+
+    summary = import_cached_artifacts(
+        {"bucket": "sessions", "prefix": "team"}, [data], upgrade=True
+    )
+    assert summary.imported == 1
+    assert summary.skipped == 0
+
+    monkeypatch.setattr(
+        "fs_sessions.fullsend.read_json_object",
+        lambda _cfg, key: {"schema_version": 4} if key == mkey else None,
+    )
+    uploads.clear()
+    summary2 = import_cached_artifacts(
+        {"bucket": "sessions", "prefix": "team"}, [data], upgrade=True
+    )
+    assert summary2.imported == 0
+    assert summary2.skipped == 1
 
 
 def test_cached_artifact_loader_uses_old_sidecars(tmp_path):

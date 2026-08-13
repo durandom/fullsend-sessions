@@ -36,7 +36,7 @@ DEFAULT_ARTIFACT_NAMES = (
     "fullsend-review",
     "fullsend-triage",
 )
-CONVERTER_VERSION = 3
+CONVERTER_VERSION = 4
 
 
 class FullsendError(RuntimeError):
@@ -716,6 +716,19 @@ def _manifest_inventory(
     return {k for k in list_keys(s3_config, manifest_prefix) if k.endswith("/manifest.json")}
 
 
+def _outdated_manifests(
+    s3_config: Dict[str, Any], keys: Iterable[str]
+) -> set[str]:
+    outdated: set[str] = set()
+    for key in keys:
+        manifest = read_json_object(s3_config, key)
+        if not manifest:
+            continue
+        if manifest.get("schema_version", 0) < CONVERTER_VERSION:
+            outdated.add(key)
+    return outdated
+
+
 SYNC_STATE_KEY = "imports/github/_sync-state.json"
 
 
@@ -767,6 +780,7 @@ def import_artifacts(
     *,
     dry_run: bool = False,
     force: bool = False,
+    upgrade: bool = False,
     workers: int = 8,
 ) -> ImportSummary:
     artifact_list = list(artifacts)
@@ -774,7 +788,9 @@ def import_artifacts(
     summary = ImportSummary(discovered=total)
     prefix = str(s3_config.get("prefix", ""))
 
-    if not dry_run and not force:
+    if force:
+        existing = set()
+    elif not dry_run:
         existing = _manifest_inventory(s3_config, prefix)
     else:
         existing = set()
@@ -786,6 +802,21 @@ def import_artifacts(
             summary.skipped += 1
             continue
         work.append((artifact, key))
+
+    if upgrade and not force and existing:
+        all_keys = {manifest_key(prefix, a): a for a in artifact_list}
+        skipped_keys = [
+            manifest_key(prefix, a)
+            for a in artifact_list
+            if manifest_key(prefix, a) in existing
+        ]
+        _progress(0, total, f"checking {len(skipped_keys)} manifests for upgrade")
+        outdated = _outdated_manifests(s3_config, skipped_keys)
+        for key in outdated:
+            artifact = all_keys[key]
+            work.append((artifact, key))
+            summary.skipped -= 1
+        _progress(0, total, f"{len(outdated)} outdated, {summary.skipped} current")
 
     if not work:
         return summary
@@ -898,6 +929,7 @@ def import_cached_artifacts(
     *,
     dry_run: bool = False,
     force: bool = False,
+    upgrade: bool = False,
     workers: int = 8,
 ) -> ImportSummary:
     input_list = list(inputs)
@@ -905,7 +937,9 @@ def import_cached_artifacts(
     summary = ImportSummary(discovered=total)
     prefix = str(s3_config.get("prefix", ""))
 
-    if not dry_run and not force:
+    if force:
+        existing = set()
+    elif not dry_run:
         existing = _manifest_inventory(s3_config, prefix)
     else:
         existing = set()
@@ -917,6 +951,18 @@ def import_cached_artifacts(
             summary.skipped += 1
             continue
         work.append((data, key))
+
+    if upgrade and not force and existing:
+        all_keys = {manifest_key(prefix, d.artifact): d for d in input_list}
+        skipped_keys = [
+            manifest_key(prefix, d.artifact)
+            for d in input_list
+            if manifest_key(prefix, d.artifact) in existing
+        ]
+        outdated = _outdated_manifests(s3_config, skipped_keys)
+        for key in outdated:
+            work.append((all_keys[key], key))
+            summary.skipped -= 1
 
     if not work:
         return summary
