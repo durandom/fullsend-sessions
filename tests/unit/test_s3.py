@@ -76,6 +76,7 @@ def test_check_and_discover_agentsview_roots(monkeypatch):
             "team/alice/raw/claude/project/a.jsonl",
             "team/bob/raw/claude/project/b.jsonl",
             "team/alice/raw/claude/project/a/tool-results/tool.txt",
+            "team/alice/raw/cursor/project/c.jsonl",
             "team/ignored/raw/codex/2026/01/01/rollout.jsonl",
         ]
     )
@@ -92,6 +93,9 @@ def test_check_and_discover_agentsview_roots(monkeypatch):
     assert s3.discover_claude_roots(config) == [
         "s3://sessions/team/alice/raw/claude",
         "s3://sessions/team/bob/raw/claude",
+    ]
+    assert s3.discover_cursor_roots(config) == [
+        "s3://sessions/team/alice/raw/cursor",
     ]
 
 
@@ -175,14 +179,20 @@ def test_agentsview_config_updates_roots_and_preserves_secrets(tmp_path, monkeyp
             "s3://sessions/user/raw/claude",
         ],
     )
+    monkeypatch.setattr(
+        s3,
+        "discover_cursor_roots",
+        lambda _config: ["s3://sessions/user/raw/cursor"],
+    )
 
     result = s3.write_agentsview_config({"bucket": "sessions"}, data_dir)
 
-    assert result["count"] == 2
+    assert result["count"] == 3
     content = config_file.read_text()
     assert 'auth_token = "keep-me"' in content
     assert 'cursor_secret = "also-keep-me"' in content
     assert "s3://old/old/raw/claude" not in content
     assert '  "s3://sessions/fs-code/raw/claude",' in content
     assert '  "s3://sessions/user/raw/claude",' in content
+    assert '  "s3://sessions/user/raw/cursor",' in content
     assert config_file.stat().st_mode & 0o777 == 0o600

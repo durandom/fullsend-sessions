@@ -7,10 +7,10 @@ Discover the exact S3 roots before configuring AgentsView:
 "$FS" s3 roots
 ```
 
-Set `claude_project_dirs` in AgentsView's `config.toml` to the returned roots.
-Pass the same boto3 credential environment to the container and remove
-`CLAUDE_PROJECTS_DIR`, because that environment variable overrides the root
-array.
+Set `claude_project_dirs` and `cursor_project_dirs` in AgentsView's `config.toml`
+to the returned roots. Pass the same boto3 credential environment to the container
+and remove `CLAUDE_PROJECTS_DIR`, because that environment variable overrides the
+root array.
 
 Use the deterministic writer to preserve generated secrets and unrelated
 settings while updating only the root array:

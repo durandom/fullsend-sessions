@@ -60,6 +60,15 @@ def check_access(s3_config: Dict[str, Any]) -> Dict[str, Any]:
 
 def discover_claude_roots(s3_config: Dict[str, Any]) -> list[str]:
     """Discover AgentsView Claude roots from uploaded object keys."""
+    return _discover_editor_roots(s3_config, "claude")
+
+
+def discover_cursor_roots(s3_config: Dict[str, Any]) -> list[str]:
+    """Discover AgentsView Cursor roots from uploaded object keys."""
+    return _discover_editor_roots(s3_config, "cursor")
+
+
+def _discover_editor_roots(s3_config: Dict[str, Any], source: str) -> list[str]:
     bucket = s3_config.get("bucket")
     if not bucket:
         raise S3Error("S3 bucket is not configured")
@@ -83,18 +92,20 @@ def discover_claude_roots(s3_config: Dict[str, Any]) -> list[str]:
                     key[len(list_prefix) :] if key.startswith(list_prefix) else key
                 )
                 parts = relative.split("/")
-                if len(parts) >= 4 and parts[1:3] == ["raw", "claude"]:
+                if len(parts) >= 4 and parts[1:3] == ["raw", source]:
                     machines.add(parts[0])
             if not response.get("IsTruncated"):
                 break
             token = response.get("NextContinuationToken")
     except Exception as exc:
-        raise S3Error(f"cannot discover Claude roots in s3://{bucket}: {exc}") from exc
+        raise S3Error(
+            f"cannot discover {source} roots in s3://{bucket}: {exc}"
+        ) from exc
 
     base = f"s3://{bucket}/"
     if prefix:
         base += f"{prefix}/"
-    return [f"{base}{machine}/raw/claude" for machine in sorted(machines)]
+    return [f"{base}{machine}/raw/{source}" for machine in sorted(machines)]
 
 
 def s3_key(
@@ -354,29 +365,17 @@ def repair_export_project_metadata(
     return {"success": True, "apply": apply, "scanned": scanned, "changed": changed}
 
 
-def write_agentsview_config(
-    s3_config: Dict[str, Any], data_dir: Path
-) -> Dict[str, Any]:
-    """Update only AgentsView's Claude S3 roots in its private config."""
-    roots = discover_claude_roots(s3_config)
-    if not roots:
-        raise S3Error("no Claude S3 roots found; upload a session first")
-    data_dir = data_dir.expanduser().resolve()
-    data_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
-    os.chmod(data_dir, 0o700)
-    path = data_dir / "config.toml"
-    original = path.read_text(encoding="utf-8") if path.exists() else ""
+def _replace_toml_array(lines: list[str], key: str, roots: list[str]) -> list[str]:
     rendered = (
-        "claude_project_dirs = [\n"
+        f"{key} = [\n"
         + "".join(f"  {json.dumps(root)},\n" for root in roots)
         + "]"
     )
-    lines = original.splitlines()
     start = None
     end = None
     depth = 0
     for index, line in enumerate(lines):
-        if start is None and line.strip().startswith("claude_project_dirs"):
+        if start is None and line.strip().startswith(key):
             start = index
         if start is not None:
             depth += line.count("[") - line.count("]")
@@ -390,8 +389,27 @@ def write_agentsview_config(
         lines.extend(replacement)
     else:
         if end is None:
-            raise S3Error(f"invalid claude_project_dirs assignment in {path}")
+            raise S3Error(f"invalid {key} assignment")
         lines[start:end] = replacement
+    return lines
+
+
+def write_agentsview_config(
+    s3_config: Dict[str, Any], data_dir: Path
+) -> Dict[str, Any]:
+    """Update AgentsView Claude and Cursor S3 roots in its private config."""
+    claude_roots = discover_claude_roots(s3_config)
+    cursor_roots = discover_cursor_roots(s3_config)
+    if not claude_roots and not cursor_roots:
+        raise S3Error("no S3 session roots found; upload a session first")
+    data_dir = data_dir.expanduser().resolve()
+    data_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
+    os.chmod(data_dir, 0o700)
+    path = data_dir / "config.toml"
+    original = path.read_text(encoding="utf-8") if path.exists() else ""
+    lines = original.splitlines()
+    lines = _replace_toml_array(lines, "claude_project_dirs", claude_roots)
+    lines = _replace_toml_array(lines, "cursor_project_dirs", cursor_roots)
 
     for key in ("auth_token", "cursor_secret"):
         if not any(line.strip().startswith(f"{key}") for line in lines):
@@ -410,4 +428,10 @@ def write_agentsview_config(
         except OSError:
             pass
         raise
-    return {"config": str(path), "roots": roots, "count": len(roots)}
+    return {
+        "config": str(path),
+        "claude_roots": claude_roots,
+        "cursor_roots": cursor_roots,
+        "roots": claude_roots + cursor_roots,
+        "count": len(claude_roots) + len(cursor_roots),
+    }

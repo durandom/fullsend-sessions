@@ -139,15 +139,33 @@ def cmd_s3_check(args: argparse.Namespace) -> int:
 
 
 def cmd_s3_roots(args: argparse.Namespace) -> int:
-    from fs_sessions.s3 import discover_claude_roots
+    from fs_sessions.s3 import discover_claude_roots, discover_cursor_roots
 
     config = load_user_config(missing_ok=False)
     s3_config = get_s3_config(config)
     if not s3_config:
         raise ConfigError("S3 is not configured; run 'config init' first")
-    roots = discover_claude_roots(s3_config)
-    payload = {"count": len(roots), "roots": roots}
-    _emit(payload, "\n".join(roots) if roots else "No Claude S3 roots found", args.json)
+    claude_roots = discover_claude_roots(s3_config)
+    cursor_roots = discover_cursor_roots(s3_config)
+    roots = claude_roots + cursor_roots
+    payload = {
+        "count": len(roots),
+        "roots": roots,
+        "claude_roots": claude_roots,
+        "cursor_roots": cursor_roots,
+    }
+    if roots:
+        lines = []
+        if claude_roots:
+            lines.append("Claude:")
+            lines.extend(claude_roots)
+        if cursor_roots:
+            lines.append("Cursor:")
+            lines.extend(cursor_roots)
+        message = "\n".join(lines)
+    else:
+        message = "No Claude or Cursor S3 roots found"
+    _emit(payload, message, args.json)
     return 0 if roots else 1
 
 
