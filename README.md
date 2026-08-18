@@ -13,9 +13,11 @@ This repository provides two agent skills:
 You install the skills once. After that, use them by asking your agent for the
 outcome you want. You do not need to locate or invoke their internal CLIs.
 
-## Install
+## Install / update
 
-Install the skills globally for Claude Code and Codex:
+Install or refresh the skills globally for Claude Code and Codex. `npx skills
+add` and `npx skills update` are equivalent here — running install again updates
+an existing installation.
 
 ```bash
 npx skills add -g git@github.com:durandom/fullsend-sessions.git \
@@ -24,7 +26,8 @@ npx skills add -g git@github.com:durandom/fullsend-sessions.git \
   --copy -y
 ```
 
-Start a new agent session after installation so the skills are available.
+Start a new agent session after installation or update so the skills are
+available.
 Python 3.10 or newer and `boto3` are required. Running the local viewer also
 requires Podman.
 
