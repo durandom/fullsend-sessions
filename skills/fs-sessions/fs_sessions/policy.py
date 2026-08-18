@@ -21,6 +21,7 @@ from fs_sessions.config import (
 class RepositoryContext:
     requested_path: str
     git_root: Optional[str]
+    origins: List[str]
     origin: Optional[str]
 
 
@@ -69,15 +70,33 @@ def normalize_origin(url: str) -> str:
     return normalized[:-4] if normalized.endswith(".git") else normalized
 
 
+def _list_git_remotes(root: Path) -> List[str]:
+    names_value = _git(root, "remote")
+    if not names_value:
+        return []
+    return [name for name in names_value.splitlines() if name]
+
+
 def discover_repository(path: Path) -> RepositoryContext:
     requested = path.expanduser().resolve()
     root_value = _git(requested, "rev-parse", "--show-toplevel")
     if root_value is None:
-        return RepositoryContext(str(requested), None, None)
+        return RepositoryContext(str(requested), None, [], None)
     root = Path(root_value).resolve()
-    origin_value = _git(root, "remote", "get-url", "origin")
-    origin = normalize_origin(origin_value) if origin_value else None
-    return RepositoryContext(str(requested), str(root), origin)
+    origins: List[str] = []
+    origin_remote: Optional[str] = None
+    for name in _list_git_remotes(root):
+        url = _git(root, "remote", "get-url", name)
+        if not url:
+            continue
+        normalized = normalize_origin(url)
+        if normalized not in origins:
+            origins.append(normalized)
+        if name == "origin":
+            origin_remote = normalized
+    return RepositoryContext(
+        str(requested), str(root), origins, origin_remote
+    )
 
 
 def validate_policy(policy: Any) -> Dict[str, Any]:
@@ -113,8 +132,8 @@ def _normalize_path_pattern(pattern: str) -> str:
 
 def _matches(rule: Dict[str, Any], context: RepositoryContext) -> bool:
     if "origin" in rule:
-        return context.origin is not None and fnmatch.fnmatchcase(
-            context.origin, rule["origin"]
+        return any(
+            fnmatch.fnmatchcase(remote, rule["origin"]) for remote in context.origins
         )
     if context.git_root is None:
         return False

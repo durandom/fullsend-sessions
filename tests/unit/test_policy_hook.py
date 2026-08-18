@@ -105,9 +105,17 @@ def test_normalize_origin(url, expected):
 
 
 def _context(
-    path: Path, origin: str = "github.com/redhat-developer/rhdh"
+    path: Path,
+    origins: str | list[str] = "github.com/redhat-developer/rhdh",
+    origin: str | None = None,
 ) -> RepositoryContext:
-    return RepositoryContext(str(path), str(path), origin)
+    if isinstance(origins, str):
+        origins_list = [origins]
+        origin_remote = origin or origins
+    else:
+        origins_list = list(origins)
+        origin_remote = origin or (origins_list[0] if origins_list else None)
+    return RepositoryContext(str(path), str(path), origins_list, origin_remote)
 
 
 def test_whitelist_and_last_match_wins(global_config):
@@ -142,10 +150,66 @@ def test_blacklist_default_allow(global_config):
         assert evaluate_policy(data, Path(".")).allowed is False
 
 
+def test_origin_rule_matches_any_remote(global_config):
+    _, data = global_config
+    data["sessions"]["policy"]["rules"] = [
+        {"action": "allow", "origin": "github.com/redhat-developer/*"},
+    ]
+    with patch(
+        "fs_sessions.policy.discover_repository",
+        return_value=_context(
+            Path("/code/rhdh-plugins"),
+            [
+                "github.com/durandom/rhdh-plugins",
+                "github.com/redhat-developer/rhdh-plugins",
+            ],
+            origin="github.com/durandom/rhdh-plugins",
+        ),
+    ):
+        decision = evaluate_policy(data, Path("."))
+    assert decision.allowed is True
+    assert decision.matched_rule == 1
+
+
+def test_discover_repository_collects_all_remotes(tmp_path):
+    from fs_sessions.policy import discover_repository
+
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    subprocess = __import__("subprocess")
+    subprocess.run(["git", "init"], cwd=repo, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "remote", "add", "origin", "git@github.com:durandom/rhdh-plugins.git"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        [
+            "git",
+            "remote",
+            "add",
+            "upstream",
+            "git@github.com:redhat-developer/rhdh-plugins.git",
+        ],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+
+    context = discover_repository(repo)
+
+    assert context.origins == [
+        "github.com/durandom/rhdh-plugins",
+        "github.com/redhat-developer/rhdh-plugins",
+    ]
+    assert context.origin == "github.com/durandom/rhdh-plugins"
+
+
 def test_non_git_is_always_denied(global_config):
     _, data = global_config
     data["sessions"]["policy"]["default"] = "allow"
-    context = RepositoryContext("/tmp", None, None)
+    context = RepositoryContext("/tmp", None, [], None)
     with patch("fs_sessions.policy.discover_repository", return_value=context):
         decision = evaluate_policy(data, Path("/tmp"))
     assert decision.allowed is False

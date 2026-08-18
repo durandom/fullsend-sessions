@@ -34,7 +34,8 @@ Today they are not equivalent:
 | Surface | sessionEnd at chat close | Practical note |
 | --- | --- | --- |
 | Cursor IDE | yes | Fires when a Composer/Agent chat is closed or deleted |
-| Cursor CLI `agent` | unreliable / often no | Lifecycle hooks are still catching up; prefer IDE for automatic export |
+| Cursor CLI `agent --print` | yes | Fires when the one-shot run completes (`reason: completed`) |
+| Cursor CLI `agent` interactive | varies | `/exit` should fire `sessionEnd`, but timing can race transcript flush |
 
 If automatic CLI export is required before Cursor ships full parity, a later
 `stop` hook can upload after each agent turn. That is a separate, more chatty

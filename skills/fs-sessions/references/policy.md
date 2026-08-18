@@ -5,7 +5,7 @@ The global policy lives under `sessions.policy` in `~/.config/rhdh-skill/config.
 ## Semantics
 
 - Git `cwd` is resolved to its canonical Git root before matching.
-- `origin` values normalize SSH and HTTPS URLs to `host/owner/repo`, such as `github.com/example-org/service`.
+- `origin` rule values normalize SSH and HTTPS URLs to `host/owner/repo`, such as `github.com/example-org/service`. Every configured Git remote is normalized and checked; a rule matches when any remote matches.
 - `path` values match the canonical absolute Git root and may contain shell-style globs.
 - Rules are evaluated top to bottom; the last matching rule wins.
 - Non-Git directories are denied regardless of the default.
@@ -43,4 +43,4 @@ Mixed exceptions:
 "$FS" policy remove 3
 ```
 
-After every mutation, run `policy rules` and `policy check` for affected repositories. Report the default, matching rule, normalized origin, Git root, and final decision.
+After every mutation, run `policy rules` and `policy check` for affected repositories. Report the default, matching rule, normalized remotes, Git root, and final decision.
