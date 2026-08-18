@@ -15,14 +15,14 @@ outcome you want. You do not need to locate or invoke their internal CLIs.
 
 ## Install / update
 
-Install or refresh the skills globally for Claude Code and Codex. `npx skills
+Install or refresh the skills globally for Claude Code and Cursor. `npx skills
 add` and `npx skills update` are equivalent here — running install again updates
 an existing installation.
 
 ```bash
 npx skills add -g git@github.com:durandom/fullsend-sessions.git \
   --skill fs-sessions agentsview \
-  --agent claude-code codex \
+  --agent claude-code cursor \
   --copy -y
 ```
 
