@@ -131,19 +131,40 @@ def uninstall_hook(settings_path: Path = DEFAULT_SETTINGS) -> Dict[str, Any]:
     return {"installed": False, "settings": str(settings_path), "removed": removed}
 
 
+def _describe_hook(hook: Any, matcher: str = "") -> Dict[str, Any]:
+    command = hook.get("command") if isinstance(hook, dict) else None
+    return {
+        "command": command,
+        "managed": is_managed_command(command),
+        "type": hook.get("type") if isinstance(hook, dict) else None,
+        "timeout": hook.get("timeout") if isinstance(hook, dict) else None,
+        "matcher": matcher or None,
+    }
+
+
 def hook_status(settings_path: Path = DEFAULT_SETTINGS) -> Dict[str, Any]:
-    data = _load_settings(settings_path)
+    exists = settings_path.exists()
+    data = _load_settings(settings_path) if exists else {}
     hooks = data.get("hooks")
     entries = hooks.get("SessionEnd", []) if isinstance(hooks, dict) else []
-    commands = []
+    described: List[Dict[str, Any]] = []
     if isinstance(entries, list):
         for entry in entries:
-            for hook in entry.get("hooks", []) if isinstance(entry, dict) else []:
-                command = hook.get("command") if isinstance(hook, dict) else None
-                if is_managed_command(command):
-                    commands.append(command)
+            matcher = entry.get("matcher", "") if isinstance(entry, dict) else ""
+            hook_list = entry.get("hooks", []) if isinstance(entry, dict) else []
+            if not isinstance(hook_list, list):
+                continue
+            for hook in hook_list:
+                described.append(_describe_hook(hook, matcher))
+    commands = [item["command"] for item in described if item["managed"]]
     return {
         "installed": bool(commands),
+        "exists": exists,
         "settings": str(settings_path),
         "commands": commands,
+        "managed_count": sum(1 for item in described if item["managed"]),
+        "other_count": sum(
+            1 for item in described if not item["managed"] and item["command"]
+        ),
+        "entries": described,
     }

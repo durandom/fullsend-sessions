@@ -1,7 +1,7 @@
 # fullsend-sessions
 
-Share selected Claude Code sessions and Fullsend agent runs through S3, then
-browse and query them with
+Share selected Claude Code and Cursor sessions and Fullsend agent runs through
+S3, then browse and query them with
 [AgentsView](https://github.com/kenn-io/agentsview).
 
 This repository provides two agent skills:
@@ -13,9 +13,11 @@ This repository provides two agent skills:
 You install the skills once. After that, use them by asking your agent for the
 outcome you want. You do not need to locate or invoke their internal CLIs.
 
-## Install
+## Install / update
 
-Install the skills globally for Claude Code and Codex:
+Install or refresh the skills globally for Claude Code and Codex. `npx skills
+add` and `npx skills update` are equivalent here — running install again updates
+an existing installation.
 
 ```bash
 npx skills add -g git@github.com:durandom/fullsend-sessions.git \
@@ -24,7 +26,8 @@ npx skills add -g git@github.com:durandom/fullsend-sessions.git \
   --copy -y
 ```
 
-Start a new agent session after installation so the skills are available.
+Start a new agent session after installation or update so the skills are
+available.
 Python 3.10 or newer and `boto3` are required. Running the local viewer also
 requires Podman.
 
@@ -42,13 +45,23 @@ Then ask:
 
 The agent validates S3 access, stores only non-secret bucket metadata, creates
 the global repository policy, resolves a stable machine identity, tests an
-upload, and installs the hook.
+upload, and installs the Claude SessionEnd hook when requested.
+
+To enable automatic Cursor uploads after the base setup, ask:
+
+> Install the global Cursor sessionEnd hook for fs-sessions and verify it is
+> registered. Keep the same S3 policy; uploads should land under `raw/cursor/`.
+
+Cursor automatic export currently works best in the IDE when a Composer or
+Agent chat is closed. The Cursor CLI (`agent`) reads the same `~/.cursor/hooks.json`
+but does not yet fire all lifecycle hooks reliably.
 
 To check an existing installation, ask:
 
 > Check whether session sharing is correctly configured for this repository.
-> Verify S3 access, explain the matching policy rule, inspect the global hook,
-> and tell me whether the next completed session will upload.
+> Verify S3 access, explain the matching policy rule, inspect the Claude and
+> Cursor hooks when present, and tell me whether the next completed session
+> will upload.
 
 ## Choose what gets shared
 
@@ -75,7 +88,7 @@ opt out by setting this in `.rhdh/config.json`:
 
 ## Share and find sessions
 
-The global hook uploads an allowed session when it ends. It preserves the
+The global hooks upload an allowed session when it ends. They preserve the
 parent transcript, nested subagents, tool results, and companion files.
 
 You can also ask for an explicit upload:
@@ -132,7 +145,7 @@ them consistently:
 | AgentsView field | Meaning |
 |---|---|
 | `project` | Git repository, such as `rhdh-plugins` |
-| `agent` | Session format/runtime, normally `claude` |
+| `agent` | Session format/runtime, such as `claude` or `cursor` |
 | `machine` | Producing user identity inferred from Git, or a Fullsend agent such as `fs-code` |
 
 AgentsView normalizes dashes to underscores in project labels, so

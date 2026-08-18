@@ -243,6 +243,39 @@ def test_hook_install_migrates_legacy_and_preserves_other_hooks(tmp_path):
     assert saved["theme"] == "dark"
 
 
+def test_hook_status_reports_managed_and_other_entries(tmp_path):
+    settings = tmp_path / "settings.json"
+    script = tmp_path / "fs-sessions"
+    script.touch()
+    settings.write_text(
+        json.dumps(
+            {
+                "hooks": {
+                    "SessionEnd": [
+                        {
+                            "matcher": "",
+                            "hooks": [
+                                {"type": "command", "command": "notify-send done"},
+                            ],
+                        }
+                    ]
+                }
+            }
+        )
+    )
+    install_hook(script, settings)
+    result = hook_status(settings)
+
+    assert result["installed"] is True
+    assert result["managed_count"] == 1
+    assert result["other_count"] == 1
+    assert len(result["entries"]) == 2
+    managed = [entry for entry in result["entries"] if entry["managed"]]
+    other = [entry for entry in result["entries"] if not entry["managed"]]
+    assert managed[0]["timeout"] == 30
+    assert other[0]["command"] == "notify-send done"
+
+
 def test_hook_uninstall_is_scoped_and_idempotent(tmp_path):
     settings = tmp_path / "settings.json"
     script = tmp_path / "fs-sessions"
@@ -316,6 +349,138 @@ def test_export_preserves_complete_session_family(tmp_path):
     assert updated.paths == [exported_family / "tool-results" / tool_result.name]
 
 
+def test_cursor_hook_status_reports_managed_and_other_entries(tmp_path):
+    hooks_path = tmp_path / "hooks.json"
+    script = tmp_path / "fs-sessions"
+    script.touch()
+    hooks_path.write_text(
+        json.dumps(
+            {
+                "version": 1,
+                "hooks": {
+                    "sessionEnd": [{"command": "notify-send cursor-done"}]
+                },
+            }
+        )
+    )
+
+    from fs_sessions.cursor_hook import hook_status as cursor_hook_status
+    from fs_sessions.cursor_hook import install_hook as install_cursor_hook
+
+    install_cursor_hook(script, hooks_path)
+    result = cursor_hook_status(hooks_path)
+
+    assert result["installed"] is True
+    assert result["managed_count"] == 1
+    assert result["other_count"] == 1
+    assert len(result["entries"]) == 2
+    managed = [entry for entry in result["entries"] if entry["managed"]]
+    other = [entry for entry in result["entries"] if not entry["managed"]]
+    assert managed[0]["timeout"] == 30
+    assert other[0]["command"] == "notify-send cursor-done"
+
+
+def test_export_preserves_cursor_session_layout(tmp_path):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    session_dir = tmp_path / "session-id"
+    session_dir.mkdir()
+    transcript = session_dir / "session-id.jsonl"
+    transcript.write_text('{"role":"user"}\n')
+    attachment = session_dir / "attachments" / "note.txt"
+    attachment.parent.mkdir(parents=True)
+    attachment.write_text("cursor companion")
+
+    first = prepare_export(transcript, "session-id", "project", repo, "user")
+
+    assert first is not None
+    assert len(first.paths) == 2
+    exported_family = repo / "sessions" / "user_project" / "session-id"
+    assert (exported_family / "attachments" / "note.txt").read_text() == "cursor companion"
+    assert prepare_export(transcript, "session-id", "project", repo, "user") is None
+
+
+def test_cursor_hook_install_preserves_other_hooks(tmp_path):
+    hooks_path = tmp_path / "hooks.json"
+    hooks_path.write_text(
+        json.dumps(
+            {
+                "version": 1,
+                "hooks": {
+                    "sessionEnd": [
+                        {"command": "notify-send cursor-done"},
+                        {"command": "bash /x/export-session.sh"},
+                    ]
+                },
+            }
+        )
+    )
+    script = tmp_path / "fs-sessions"
+    script.touch()
+
+    from fs_sessions.cursor_hook import install_hook as install_cursor_hook
+
+    first = install_cursor_hook(script, hooks_path)
+    second = install_cursor_hook(script, hooks_path)
+
+    assert first["replaced"] == 1
+    assert second["replaced"] == 1
+    saved = json.loads(hooks_path.read_text())
+    commands = [entry["command"] for entry in saved["hooks"]["sessionEnd"]]
+    assert commands.count("notify-send cursor-done") == 1
+    assert len([command for command in commands if "cursor-hook run" in command]) == 1
+    managed = [
+        entry
+        for entry in saved["hooks"]["sessionEnd"]
+        if "cursor-hook run" in entry["command"]
+    ]
+    assert managed[0]["timeout"] == 30
+
+
+def test_cursor_hook_run_exports_allowed_repository(
+    global_config, tmp_path, monkeypatch, capsys
+):
+    _, data = global_config
+    data["sessions"]["policy"]["default"] = "allow"
+    config.save_user_config(data)
+    source_repo = tmp_path / "source"
+    source_repo.mkdir()
+    session_dir = tmp_path / "session-1"
+    session_dir.mkdir()
+    transcript = session_dir / "session-1.jsonl"
+    transcript.write_text('{"role":"user"}\n')
+    context = _context(source_repo)
+    event = {
+        "workspace_roots": [str(source_repo)],
+        "transcript_path": str(transcript),
+        "session_id": "session-1",
+    }
+    monkeypatch.setattr("sys.stdin", io.StringIO(json.dumps(event)))
+    monkeypatch.setattr(
+        "fs_sessions.cli.evaluate_policy",
+        lambda *_: type("Decision", (), {"allowed": True, "context": context})(),
+    )
+    captured = {}
+
+    def fake_upload(_config, paths, _base, username, project, source="claude"):
+        captured["username"] = username
+        captured["project"] = project
+        captured["source"] = source
+        captured["paths"] = [path.relative_to(_base).as_posix() for path in paths]
+        return True
+
+    monkeypatch.setattr("fs_sessions.s3.upload_session", fake_upload)
+
+    assert main(["cursor-hook", "run"]) == 0
+    assert captured == {
+        "username": "test-user",
+        "project": "source",
+        "source": "cursor",
+        "paths": ["sessions/test-user_source/session-1.jsonl"],
+    }
+    assert capsys.readouterr().out == ""
+
+
 def test_hook_run_exports_allowed_repository(
     global_config, tmp_path, monkeypatch, capsys
 ):
@@ -342,9 +507,10 @@ def test_hook_run_exports_allowed_repository(
     )
     captured = {}
 
-    def fake_upload(_config, paths, _base, username, project):
+    def fake_upload(_config, paths, _base, username, project, source="claude"):
         captured["username"] = username
         captured["project"] = project
+        captured["source"] = source
         captured["paths"] = [path.relative_to(_base).as_posix() for path in paths]
         return True
 
@@ -354,6 +520,7 @@ def test_hook_run_exports_allowed_repository(
     assert captured == {
         "username": "test-user",
         "project": "source",
+        "source": "claude",
         "paths": [
             "sessions/test-user_source/session-1.jsonl",
             "sessions/test-user_source/session-1/subagents/agent-child.jsonl",

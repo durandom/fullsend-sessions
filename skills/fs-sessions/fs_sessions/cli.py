@@ -23,6 +23,13 @@ from fs_sessions.config import (
     save_user_config,
 )
 from fs_sessions.discovery import SessionInfo, discover_sessions
+from fs_sessions.cursor_hook import (
+    DEFAULT_HOOKS as DEFAULT_CURSOR_HOOKS,
+    CursorHookError,
+    hook_status as cursor_hook_status,
+    install_hook as install_cursor_hook,
+    uninstall_hook as uninstall_cursor_hook,
+)
 from fs_sessions.export import prepare_export
 from fs_sessions.fullsend import FullsendError
 from fs_sessions.hook import (
@@ -269,16 +276,46 @@ def _emit_hook_notice(message: str) -> None:
     sys.stdout.write("\n")
 
 
-def _run_hook() -> int:
-    """Run fail-closed and silent so SessionEnd itself can never fail."""
-    try:
-        event = json.load(sys.stdin)
-        cwd = event.get("cwd")
-        transcript_value = event.get("transcript_path")
-        session_id = event.get("session_id")
-        if not cwd or not transcript_value or not session_id:
-            return 0
+def _cursor_hooks(args: argparse.Namespace) -> Path:
+    return (
+        Path(args.hooks).expanduser()
+        if getattr(args, "hooks", None)
+        else DEFAULT_CURSOR_HOOKS
+    )
 
+
+def cmd_cursor_hook_install(args: argparse.Namespace) -> int:
+    result = install_cursor_hook(_script_path(), _cursor_hooks(args))
+    _emit(
+        result,
+        f"Installed global Cursor sessionEnd hook in {result['hooks']}",
+        args.json,
+    )
+    return 0
+
+
+def cmd_cursor_hook_status(args: argparse.Namespace) -> int:
+    result = cursor_hook_status(_cursor_hooks(args))
+    state = "installed" if result["installed"] else "not installed"
+    message = f"Cursor hook: {state} ({result['hooks']})"
+    _emit(result, message, args.json)
+    return 0 if result["installed"] else 1
+
+
+def cmd_cursor_hook_uninstall(args: argparse.Namespace) -> int:
+    result = uninstall_cursor_hook(_cursor_hooks(args))
+    _emit(result, f"Removed {result['removed']} Cursor session hook(s)", args.json)
+    return 0
+
+
+def _run_session_export(
+    cwd: str,
+    transcript_value: str,
+    session_id: str,
+    source: str,
+    emit_notice: bool,
+) -> int:
+    try:
         config = load_user_config(missing_ok=False)
         decision = evaluate_policy(config, Path(cwd))
         if not decision.allowed:
@@ -297,21 +334,96 @@ def _run_hook() -> int:
 
             s3_config = get_s3_config(config)
             if s3_config and upload_session(
-                s3_config, result.paths, dest_dir, username, project
+                s3_config,
+                result.paths,
+                dest_dir,
+                username,
+                project,
+                source=source,
             ):
-                noun = "file" if len(result.paths) == 1 else "files"
-                _emit_hook_notice(
-                    f"fs-sessions: exported and uploaded {len(result.paths)} session "
-                    f"{noun} to S3 for {project}/{session_id}."
-                )
+                if emit_notice:
+                    noun = "file" if len(result.paths) == 1 else "files"
+                    _emit_hook_notice(
+                        f"fs-sessions: exported and uploaded {len(result.paths)} session "
+                        f"{noun} to S3 for {project}/{session_id}."
+                    )
     except Exception:
         return 0
     return 0
 
 
+def _run_hook() -> int:
+    """Run fail-closed and silent so SessionEnd itself can never fail."""
+    try:
+        event = json.load(sys.stdin)
+        cwd = event.get("cwd")
+        transcript_value = event.get("transcript_path")
+        session_id = event.get("session_id")
+        if not cwd or not transcript_value or not session_id:
+            return 0
+        return _run_session_export(cwd, transcript_value, session_id, "claude", True)
+    except Exception:
+        return 0
+
+
+def _run_cursor_hook() -> int:
+    """Run fail-closed and silent so Cursor sessionEnd cannot block shutdown."""
+    try:
+        event = json.load(sys.stdin)
+        transcript_value = event.get("transcript_path")
+        session_id = event.get("session_id") or event.get("conversation_id")
+        cwd = event.get("cwd")
+        if not cwd:
+            roots = event.get("workspace_roots")
+            if isinstance(roots, list) and roots:
+                cwd = roots[0]
+        if not cwd or not transcript_value or not session_id:
+            return 0
+        return _run_session_export(cwd, transcript_value, session_id, "cursor", False)
+    except Exception:
+        return 0
+
+
+def _format_hook_entry(entry: Dict[str, Any]) -> str:
+    command = entry.get("command") or "<missing command>"
+    details: List[str] = []
+    if entry.get("timeout") is not None:
+        details.append(f"timeout {entry['timeout']}s")
+    if entry.get("type"):
+        details.append(str(entry["type"]))
+    if entry.get("matcher"):
+        details.append(f"matcher {entry['matcher']}")
+    suffix = f" ({', '.join(details)})" if details else ""
+    return f"{command}{suffix}"
+
+
+def _format_editor_hook_status(
+    label: str, status: Dict[str, Any], path_key: str
+) -> List[str]:
+    config_path = status.get(path_key, "")
+    if not status.get("exists"):
+        return [f"{label}: not configured ({config_path} missing)"]
+    state = "installed" if status.get("installed") else "not installed"
+    lines = [f"{label}: {state} ({config_path})"]
+    managed = [entry for entry in status.get("entries", []) if entry.get("managed")]
+    other = [
+        entry
+        for entry in status.get("entries", [])
+        if not entry.get("managed") and entry.get("command")
+    ]
+    for entry in managed:
+        lines.append(f"  managed: {_format_hook_entry(entry)}")
+    for entry in other:
+        lines.append(f"  other: {_format_hook_entry(entry)}")
+    if status.get("exists") and not status.get("installed") and not other:
+        lines.append("  managed: missing fs-sessions hook")
+    return lines
+
+
 def cmd_status(args: argparse.Namespace) -> int:
     config = load_user_config(missing_ok=False)
     status = hook_status(_settings(args))
+    cursor_status = cursor_hook_status(_cursor_hooks(args))
     sessions = get_sessions_config(config)
 
     lines = []
@@ -322,6 +434,7 @@ def cmd_status(args: argparse.Namespace) -> int:
         "enabled": sessions.get("enabled", True),
         "policy": validate_policy(sessions.get("policy", {})),
         "hook": status,
+        "cursor_hook": cursor_status,
     }
 
     s3_config = get_s3_config(config)
@@ -331,9 +444,9 @@ def cmd_status(args: argparse.Namespace) -> int:
     else:
         lines.append("S3: not configured")
 
-    hook_state = "installed" if status["installed"] else "not installed"
     lines.append("Storage: S3")
-    lines.append(f"Hook: {hook_state}")
+    lines.extend(_format_editor_hook_status("Claude hook", status, "settings"))
+    lines.extend(_format_editor_hook_status("Cursor hook", cursor_status, "hooks"))
     _emit(payload, "\n".join(lines), args.json)
     return 0
 
@@ -600,6 +713,25 @@ def create_parser() -> argparse.ArgumentParser:
     run = hook_sub.add_parser("run", help=argparse.SUPPRESS)
     run.set_defaults(internal_hook=True)
 
+    cursor_hook = sub.add_parser(
+        "cursor-hook", help="Manage the global Cursor sessionEnd hook"
+    )
+    cursor_hook_sub = cursor_hook.add_subparsers(
+        dest="cursor_hook_command", required=True
+    )
+    for name, func in (
+        ("install", cmd_cursor_hook_install),
+        ("status", cmd_cursor_hook_status),
+        ("uninstall", cmd_cursor_hook_uninstall),
+    ):
+        command = cursor_hook_sub.add_parser(
+            name, help=f"{name.capitalize()} the global Cursor hook"
+        )
+        command.add_argument("--hooks", help="Cursor hooks.json path override")
+        command.set_defaults(func=func)
+    cursor_run = cursor_hook_sub.add_parser("run", help=argparse.SUPPRESS)
+    cursor_run.set_defaults(internal_cursor_hook=True)
+
     listing = sub.add_parser("list", help="List recent local Claude Code sessions")
     listing.add_argument("--limit", type=int, default=20)
     listing.set_defaults(func=cmd_list)
@@ -665,9 +797,11 @@ def main(argv: Optional[List[str]] = None) -> int:
     args = parser.parse_args(argv)
     if getattr(args, "internal_hook", False):
         return _run_hook()
+    if getattr(args, "internal_cursor_hook", False):
+        return _run_cursor_hook()
     try:
         return args.func(args)
-    except (ConfigError, FullsendError, HookError, S3Error, OSError) as exc:
+    except (ConfigError, FullsendError, HookError, CursorHookError, S3Error, OSError) as exc:
         if args.json or not sys.stdout.isatty():
             json.dump({"success": False, "error": str(exc)}, sys.stdout)
             sys.stdout.write("\n")

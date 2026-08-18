@@ -62,13 +62,20 @@ def _files_equal(source: Path, dest: Path) -> bool:
         return _streams_equal(source_stream, dest_stream)
 
 
-def _copy_companion_files(source_dir: Path, dest_dir: Path) -> list[Path]:
+def _copy_companion_files(
+    source_dir: Path,
+    dest_dir: Path,
+    exclude: Optional[Path] = None,
+) -> list[Path]:
     """Copy every regular companion file while preserving Claude's layout."""
     changed = []
     if not source_dir.is_dir():
         return changed
+    exclude_resolved = exclude.resolve() if exclude is not None else None
     for source in sorted(source_dir.rglob("*")):
         if source.is_symlink() or not source.is_file():
+            continue
+        if exclude_resolved is not None and source.resolve() == exclude_resolved:
             continue
         dest = dest_dir / source.relative_to(source_dir)
         if _files_equal(source, dest):
@@ -77,6 +84,14 @@ def _copy_companion_files(source_dir: Path, dest_dir: Path) -> list[Path]:
         shutil.copyfile(source, dest)
         changed.append(dest)
     return changed
+
+
+def _companion_source(transcript: Path, session_id: str) -> Path:
+    """Cursor stores the transcript inside the session folder; Claude uses a sibling."""
+    parent = transcript.parent
+    if parent.name == session_id:
+        return parent
+    return parent / session_id
 
 
 def prepare_export(
@@ -100,9 +115,14 @@ def prepare_export(
                 shutil.copyfileobj(source, output)
         changed.append(dest)
 
-    source_companions = transcript.parent / session_id
+    source_companions = _companion_source(transcript, session_id)
     dest_companions = dest.parent / session_id
-    changed.extend(_copy_companion_files(source_companions, dest_companions))
+    companion_exclude = transcript if source_companions == transcript.parent else None
+    changed.extend(
+        _copy_companion_files(
+            source_companions, dest_companions, exclude=companion_exclude
+        )
+    )
     if not changed:
         return None
     return ExportResult(
