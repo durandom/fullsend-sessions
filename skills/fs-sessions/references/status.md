@@ -8,8 +8,9 @@ Run:
 ```
 
 Status reports S3 storage, stable user machine name, non-secret S3
-configuration, enabled state, repository policy, and global hook. `s3 check`
-separately proves the active boto3 identity can list the bucket.
+configuration, enabled state, repository policy, the Claude hook, and the
+Cursor hook when present. `s3 check` separately proves the active boto3 identity
+can list the bucket.
 
 For a repository-specific diagnosis, also run:
 

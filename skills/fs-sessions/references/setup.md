@@ -60,15 +60,27 @@ repositories:
 
 Continue only when the check reports `allow` and the expected rule number.
 
-## 5. Install the global hook
+## 5. Install editor hooks
+
+Claude Code users:
 
 ```bash
 "$FS" hook install
 "$FS" hook status
 ```
 
-The installer preserves unrelated settings and replaces earlier managed or
-legacy session hooks.
+Cursor users — only after they explicitly ask for Cursor upload:
+
+```bash
+"$FS" cursor-hook install
+"$FS" cursor-hook status
+```
+
+See `references/cursor-hook.md` for IDE vs CLI (`agent`) behavior. Do not
+install the Cursor hook during first-time setup unless the user requests it.
+
+Each installer preserves unrelated settings and replaces earlier managed or
+legacy session hooks for that editor.
 
 ## 6. Verify a real upload
 
@@ -79,5 +91,5 @@ legacy session hooks.
 ```
 
 Setup is complete when the explicit share reports S3 success, the expected
-user machine root appears, the intended repository is allowed, and exactly one
-global managed hook exists.
+user machine root appears, the intended repository is allowed, and each
+requested editor has exactly one global managed hook.

@@ -97,12 +97,19 @@ def discover_claude_roots(s3_config: Dict[str, Any]) -> list[str]:
     return [f"{base}{machine}/raw/claude" for machine in sorted(machines)]
 
 
-def s3_key(username: str, project: str, relative_path: str, prefix: str = "") -> str:
+def s3_key(
+    username: str,
+    project: str,
+    relative_path: str,
+    prefix: str = "",
+    source: str = "claude",
+) -> str:
     """Build the S3 object key using AgentsView path convention.
 
     AgentsView expects: <machine>/raw/claude/<project>/<uuid>.jsonl
+    Cursor sessions use the parallel raw/cursor prefix.
     """
-    key = f"{username}/raw/claude/{project}/{relative_path}"
+    key = f"{username}/raw/{source}/{project}/{relative_path}"
     if prefix:
         key = f"{prefix.rstrip('/')}/{key}"
     return key
@@ -114,6 +121,7 @@ def upload_session(
     base_dir: Path,
     username: str,
     project: str,
+    source: str = "claude",
 ) -> bool:
     """Upload exported session files to S3.
 
@@ -140,7 +148,7 @@ def upload_session(
             ok = False
             continue
         session_relative = Path(*rel.parts[1:]).as_posix()
-        key = s3_key(username, project, session_relative, prefix)
+        key = s3_key(username, project, session_relative, prefix, source=source)
         try:
             client.upload_file(str(path), bucket, key)
             log.info("Uploaded s3://%s/%s", bucket, key)

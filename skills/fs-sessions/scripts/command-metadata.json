@@ -11,6 +11,10 @@
     "description": "Install, inspect, migrate, or remove the global Claude Code SessionEnd transcript hook.",
     "argumentHint": "[install|status|uninstall]"
   },
+  "cursor-hook": {
+    "description": "Install, inspect, or remove the global Cursor sessionEnd transcript hook.",
+    "argumentHint": "[install|status|uninstall]"
+  },
   "status": {
     "description": "Diagnose S3 session config, credentials, repository policy, hook installation, and upload readiness.",
     "argumentHint": "[repository]"
