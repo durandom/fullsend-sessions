@@ -114,19 +114,35 @@ def uninstall_hook(hooks_path: Path = DEFAULT_HOOKS) -> Dict[str, Any]:
     return {"installed": False, "hooks": str(hooks_path), "removed": removed}
 
 
+def _describe_entry(entry: Any) -> Dict[str, Any]:
+    command = entry.get("command") if isinstance(entry, dict) else None
+    return {
+        "command": command,
+        "managed": is_managed_command(command),
+        "timeout": entry.get("timeout") if isinstance(entry, dict) else None,
+        "matcher": entry.get("matcher") if isinstance(entry, dict) else None,
+    }
+
+
 def hook_status(hooks_path: Path = DEFAULT_HOOKS) -> Dict[str, Any]:
-    data = _load_hooks(hooks_path)
+    exists = hooks_path.exists()
+    data = _load_hooks(hooks_path) if exists else {"version": 1, "hooks": {}}
     hooks = data.get("hooks")
     entries = hooks.get("sessionEnd", []) if isinstance(hooks, dict) else []
-    commands: List[str] = []
+    described: List[Dict[str, Any]] = []
     if isinstance(entries, list):
         for entry in entries:
             if isinstance(entry, dict):
-                command = entry.get("command")
-                if is_managed_command(command):
-                    commands.append(command)
+                described.append(_describe_entry(entry))
+    commands = [item["command"] for item in described if item["managed"]]
     return {
         "installed": bool(commands),
+        "exists": exists,
         "hooks": str(hooks_path),
         "commands": commands,
+        "managed_count": sum(1 for item in described if item["managed"]),
+        "other_count": sum(
+            1 for item in described if not item["managed"] and item["command"]
+        ),
+        "entries": described,
     }

@@ -4,13 +4,16 @@ Run:
 
 ```bash
 "$FS" status
+"$FS" status --json
 "$FS" s3 check
 ```
 
 Status reports S3 storage, stable user machine name, non-secret S3
-configuration, enabled state, repository policy, the Claude hook, and the
-Cursor hook when present. `s3 check` separately proves the active boto3 identity
-can list the bucket.
+configuration, enabled state, repository policy, and detailed hook state for
+Claude Code and Cursor. For each editor it shows the config file path, whether
+the fs-sessions managed hook is installed, any other `SessionEnd` / `sessionEnd`
+hooks, and per-entry timeout or matcher metadata when present. `status --json`
+includes the same detail under `hook.entries` and `cursor_hook.entries`.
 
 For a repository-specific diagnosis, also run:
 

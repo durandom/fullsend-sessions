@@ -243,6 +243,39 @@ def test_hook_install_migrates_legacy_and_preserves_other_hooks(tmp_path):
     assert saved["theme"] == "dark"
 
 
+def test_hook_status_reports_managed_and_other_entries(tmp_path):
+    settings = tmp_path / "settings.json"
+    script = tmp_path / "fs-sessions"
+    script.touch()
+    settings.write_text(
+        json.dumps(
+            {
+                "hooks": {
+                    "SessionEnd": [
+                        {
+                            "matcher": "",
+                            "hooks": [
+                                {"type": "command", "command": "notify-send done"},
+                            ],
+                        }
+                    ]
+                }
+            }
+        )
+    )
+    install_hook(script, settings)
+    result = hook_status(settings)
+
+    assert result["installed"] is True
+    assert result["managed_count"] == 1
+    assert result["other_count"] == 1
+    assert len(result["entries"]) == 2
+    managed = [entry for entry in result["entries"] if entry["managed"]]
+    other = [entry for entry in result["entries"] if not entry["managed"]]
+    assert managed[0]["timeout"] == 30
+    assert other[0]["command"] == "notify-send done"
+
+
 def test_hook_uninstall_is_scoped_and_idempotent(tmp_path):
     settings = tmp_path / "settings.json"
     script = tmp_path / "fs-sessions"
@@ -314,6 +347,37 @@ def test_export_preserves_complete_session_family(tmp_path):
 
     assert updated is not None and updated.verb == "update"
     assert updated.paths == [exported_family / "tool-results" / tool_result.name]
+
+
+def test_cursor_hook_status_reports_managed_and_other_entries(tmp_path):
+    hooks_path = tmp_path / "hooks.json"
+    script = tmp_path / "fs-sessions"
+    script.touch()
+    hooks_path.write_text(
+        json.dumps(
+            {
+                "version": 1,
+                "hooks": {
+                    "sessionEnd": [{"command": "notify-send cursor-done"}]
+                },
+            }
+        )
+    )
+
+    from fs_sessions.cursor_hook import hook_status as cursor_hook_status
+    from fs_sessions.cursor_hook import install_hook as install_cursor_hook
+
+    install_cursor_hook(script, hooks_path)
+    result = cursor_hook_status(hooks_path)
+
+    assert result["installed"] is True
+    assert result["managed_count"] == 1
+    assert result["other_count"] == 1
+    assert len(result["entries"]) == 2
+    managed = [entry for entry in result["entries"] if entry["managed"]]
+    other = [entry for entry in result["entries"] if not entry["managed"]]
+    assert managed[0]["timeout"] == 30
+    assert other[0]["command"] == "notify-send cursor-done"
 
 
 def test_export_preserves_cursor_session_layout(tmp_path):

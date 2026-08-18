@@ -384,6 +384,42 @@ def _run_cursor_hook() -> int:
         return 0
 
 
+def _format_hook_entry(entry: Dict[str, Any]) -> str:
+    command = entry.get("command") or "<missing command>"
+    details: List[str] = []
+    if entry.get("timeout") is not None:
+        details.append(f"timeout {entry['timeout']}s")
+    if entry.get("type"):
+        details.append(str(entry["type"]))
+    if entry.get("matcher"):
+        details.append(f"matcher {entry['matcher']}")
+    suffix = f" ({', '.join(details)})" if details else ""
+    return f"{command}{suffix}"
+
+
+def _format_editor_hook_status(
+    label: str, status: Dict[str, Any], path_key: str
+) -> List[str]:
+    config_path = status.get(path_key, "")
+    if not status.get("exists"):
+        return [f"{label}: not configured ({config_path} missing)"]
+    state = "installed" if status.get("installed") else "not installed"
+    lines = [f"{label}: {state} ({config_path})"]
+    managed = [entry for entry in status.get("entries", []) if entry.get("managed")]
+    other = [
+        entry
+        for entry in status.get("entries", [])
+        if not entry.get("managed") and entry.get("command")
+    ]
+    for entry in managed:
+        lines.append(f"  managed: {_format_hook_entry(entry)}")
+    for entry in other:
+        lines.append(f"  other: {_format_hook_entry(entry)}")
+    if status.get("exists") and not status.get("installed") and not other:
+        lines.append("  managed: missing fs-sessions hook")
+    return lines
+
+
 def cmd_status(args: argparse.Namespace) -> int:
     config = load_user_config(missing_ok=False)
     status = hook_status(_settings(args))
@@ -408,13 +444,9 @@ def cmd_status(args: argparse.Namespace) -> int:
     else:
         lines.append("S3: not configured")
 
-    hook_state = "installed" if status["installed"] else "not installed"
-    cursor_hook_state = (
-        "installed" if cursor_status["installed"] else "not installed"
-    )
     lines.append("Storage: S3")
-    lines.append(f"Claude hook: {hook_state}")
-    lines.append(f"Cursor hook: {cursor_hook_state}")
+    lines.extend(_format_editor_hook_status("Claude hook", status, "settings"))
+    lines.extend(_format_editor_hook_status("Cursor hook", cursor_status, "hooks"))
     _emit(payload, "\n".join(lines), args.json)
     return 0
 
